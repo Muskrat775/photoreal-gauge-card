@@ -1,8 +1,8 @@
-# Photoreal Gauge Card - Help
+# Photoreal Gauge Card
 
-Version 1.4.0
+Version 1.4.1
 
-![A photo-realistic gauge on a carbon graphite panel](images/hero.png)
+![A photo-realistic gauge on a carbon graphite panel](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/hero.png)
 
 Photoreal Gauge Card is a custom Lovelace card for Home Assistant that draws a realistic analog gauge: a metallic outer ring, a glass-covered dial, a needle with a glowing tip, colored threshold arcs, LED indicators, text labels and LED-style digital displays. Everything can be set from the visual editor, and every field has an info icon that explains it.
 
@@ -24,19 +24,35 @@ Photoreal Gauge Card is a custom Lovelace card for Home Assistant that draws a r
 
 ## Install
 
-You need Home Assistant with access to the `/config` folder (File editor, Studio Code Server, Samba, or SSH). No HACS and no restart are required.
+### With HACS (recommended)
 
-1. Copy the whole `photoreal-gauge-card` folder into `/config/www/`. You end up with this layout:
+If the card is listed in the HACS store, open **HACS**, search for **Photoreal Gauge Card**, click **Download**, and hard refresh your browser (Ctrl+Shift+R, or Cmd+Shift+R on a Mac).
+
+If it is not listed yet, add it as a custom repository:
+
+1. Open **HACS**, click the three-dot menu at the top right and choose **Custom repositories**.
+2. Enter `https://github.com/Muskrat775/photoreal-gauge-card`, set the type to **Dashboard**, and click **Add**.
+3. Search for **Photoreal Gauge Card**, click **Download**, and hard refresh your browser.
+
+HACS adds the resource for you. The files are installed to `/config/www/community/photoreal-gauge-card/` and served from `/hacsfiles/photoreal-gauge-card/`, which is the address the example image paths in this guide use. If the card does not show up, check **Settings > Dashboards > Resources** for `/hacsfiles/photoreal-gauge-card/photoreal-gauge-card.js` of type **JavaScript module**.
+
+To update, open HACS, click the card, and choose **Update** (or **Redownload**). Then hard refresh.
+
+### Manual install
+
+You need access to the `/config` folder (File editor, Studio Code Server, Samba, or SSH). No restart is required.
+
+1. Download the `dist` folder from the repository (or the zip from the latest release) and copy its contents into `/config/www/photoreal-gauge-card/`. You end up with this layout:
 
 ```
 /config/www/photoreal-gauge-card/
     photoreal-gauge-card.js
-    help.md
-    images/          (pictures used by this help page, plus sample-needle.png)
+    README.md
+    images/          (pictures used by this guide, plus sample-needle.png)
     backgrounds/     (ready-made square backgrounds)
 ```
 
-2. Turn on **Advanced mode** in your user profile (click your name at the bottom of the sidebar, then switch on Advanced mode). Resources are hidden without it.
+2. Turn on **Advanced mode** in your user profile (click your name at the bottom of the sidebar). Resources are hidden without it.
 3. Go to **Settings > Dashboards**, open the three-dot menu at the top right and choose **Resources**.
 4. Click **Add resource**, enter this URL and choose **JavaScript module**:
 
@@ -44,13 +60,15 @@ You need Home Assistant with access to the `/config` folder (File editor, Studio
 /local/photoreal-gauge-card/photoreal-gauge-card.js
 ```
 
-5. Save, then reload the browser page with a hard refresh (Ctrl+Shift+R, or Cmd+Shift+R on a Mac). In the mobile app use **Settings > Companion app > Debugging > Reset frontend cache**.
+5. Save, then hard refresh the browser. In the mobile app use **Settings > Companion app > Debugging > Reset frontend cache**.
 
 > If `/config/www` did not exist before, create it and restart Home Assistant once so the `/local/` address becomes available.
 
-> Keep `help.md` in the same folder as the JavaScript file. The **Help** button in the editor loads it from there.
+Files served from `/config/www/photoreal-gauge-card/` use `/local/photoreal-gauge-card/...` addresses. Wherever this guide shows `/hacsfiles/photoreal-gauge-card/`, use `/local/photoreal-gauge-card/` instead.
 
-**Updating:** replace the files in the folder, then hard refresh. If you still see the old version, add `?v=2` to the resource URL (and increase the number on later updates).
+> Keep `README.md` in the same folder as the JavaScript file. The **Help** button in the editor loads it from there.
+
+To update manually, replace the files, then hard refresh. If you still see the old version, add `?v=2` to the resource URL (and increase the number on later updates).
 
 ## Add the card
 
@@ -64,7 +82,7 @@ Or use YAML in the card's code editor. This is the smallest working card:
 {type: 'custom:photoreal-gauge-card', entity: sensor.battery_level}
 ```
 
-![The default gauge](images/basic.png)
+![The default gauge](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/basic.png)
 
 The entity must have a numeric state (or a numeric attribute, set with `attribute`). A more complete example, which is the gauge at the top of this page:
 
@@ -115,7 +133,7 @@ Groups with a list (Thresholds, Text labels, Digital displays, LED indicators) h
 
 ## How the gauge is built
 
-![The parts of the gauge, numbered](images/anatomy.png)
+![The parts of the gauge, numbered](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/anatomy.png)
 
 1. **Square background** - the square behind everything (`square_*` options). Add a picture such as the carbon or brushed metal backgrounds.
 2. **Gauge outer ring** - the metallic ring, with optional glow and image (`border_*` options).
@@ -140,7 +158,7 @@ Items are centered on the position you give them, so very low or very high value
 
 Sizes (text size, LED size, digital width) are percentages of the card width, so the gauge scales cleanly when you resize the card.
 
-![Positions of items on the gauge](images/positions.png)
+![Positions of items on the gauge](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/positions.png)
 
 ## All options
 
@@ -183,7 +201,7 @@ hold_action: {action: more-info}
 | Square radius | `square_radius` | How rounded the corners of the square background are, as a percentage of the card width. 0 gives sharp corners. | `4` |
 | Square color | `square_color` | Fill color of the square behind the dial. By default it matches the dashboard's card background. | dashboard card color |
 | Square color opacity | `square_color_opacity` | Opacity of the square's fill color, from 0 (transparent) to 1 (solid). | `1` |
-| Square image URL | `square_image` | URL of an image for the square background, for example /hacsfiles/photoreal-gauge-card/backgrounds/carbon-graphite-screws.jpg. It is scaled to cover the square and drawn over the fill color. | empty |
+| Square image URL | `square_image` | URL of an image for the square background, for example /hacsfiles/photoreal-gauge-card/backgrounds/carbon-graphite-screws.jpg (HACS) or /hacsfiles/photoreal-gauge-card/backgrounds/carbon-graphite-screws.jpg (manual install). It is scaled to cover the square and drawn over the fill color. | empty |
 | Square image opacity | `square_image_opacity` | Opacity of the square background image. Lower it to let the fill color show through. | `1` |
 | Circle color | `circle_color` | Fill color of the round dial face inside the outer ring. | `#1b1f24` |
 | Circle color opacity | `circle_color_opacity` | Opacity of the dial face color. Lower it to let the square background show through the dial. | `1` |
@@ -194,7 +212,7 @@ hold_action: {action: more-info}
 | Glass | `glass` | Adds a glass-cover highlight over the dial and needle. | on |
 | Glass intensity | `glass_intensity` | How strong the glass highlight is, from 0 (none) to 100. | `40` |
 
-![Backgrounds: carbon graphite, brushed metal with screws, plain brushed metal](images/bg-carbon.png)
+![Backgrounds: carbon graphite, brushed metal with screws, plain brushed metal](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/bg-carbon.png)
 
 ### Gauge outer ring
 
@@ -211,7 +229,7 @@ The ring is the metallic frame around the dial. These options were previously ca
 | Inner glow color | `border_inner_glow_color` | Color of the glow just inside the ring, on the dial face. | `#00b0ff` |
 | Inner glow intensity | `border_inner_glow_intensity` | Strength of the inner glow from 0 (off) to 100. | `0` |
 
-![Outer ring variants](images/outer-ring.png)
+![Outer ring variants](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/outer-ring.png)
 
 ### Ticks & numbers
 
@@ -267,19 +285,19 @@ For each marker the card uses, in this order: the marker entity, then the fixed 
 | Needle tip use threshold | `needle_tip_use_threshold` | When on, the glow takes the color of the threshold the value is currently in. | on |
 | Needle tip glow intensity | `needle_tip_glow_intensity` | Size and brightness of the halo around the glowing line, from 0 to 100. | `60` |
 
-![Needle types](images/needles.png)
+![Needle types](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/needles.png)
 
 To use your own needle picture, make a PNG with a transparent background, drawn pointing straight up, with the pivot point about 85 percent of the way down. A ready-made example is included as `images/sample-needle.png`:
 
 ```yaml
-{needle_type: image, needle_image: /local/photoreal-gauge-card/images/sample-needle.png, needle_image_width: 14}
+{needle_type: image, needle_image: /hacsfiles/photoreal-gauge-card/images/sample-needle.png, needle_image_width: 14}
 ```
 
 #### Needle tip glow
 
 The tip glow options are part of the Needle group. With **Tip uses threshold color** on, the glow takes the color of the threshold the value is in.
 
-![Needle tip glow variants](images/tip-glow.png)
+![Needle tip glow variants](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/tip-glow.png)
 
 ### Center hub
 
@@ -316,7 +334,7 @@ Each threshold range (Add threshold):
 | To (optional) | `to` | End of the range. If empty, the range ends where the next one starts, or at Max for the last one. | empty |
 | Color | `color` | Color of the arc, and of the needle tip glow while the value is in this range. | `#43a047` |
 
-![Threshold variants](images/thresholds.png)
+![Threshold variants](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/thresholds.png)
 
 ```yaml
 thresholds:
@@ -370,7 +388,7 @@ Each display (Add display). You can add as many as you like, each with its own e
 | Decimals | `decimals` | Digits after the decimal point. If empty, the gauge's Decimals setting is used. | empty |
 | Text when no data | `no_data_text` | Text shown when the entity is unavailable, unknown or not a number. | `--` |
 
-![Digital display variants](images/digitals.png)
+![Digital display variants](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/digitals.png)
 
 ### LED indicators
 
@@ -396,7 +414,7 @@ Each LED (Add LED):
 | Blink rate (seconds per cycle) | `blink_rate` | Seconds for one full on/off cycle. Lower numbers blink faster. | `1` |
 | Fade rate (seconds per cycle) | `fade_rate` | Seconds for one full fade out and back in. Lower numbers fade faster. | `2` |
 
-![LED examples](images/leds.png)
+![LED examples](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/leds.png)
 
 An LED is **lit** when all of its "Lit when" conditions are true (above, below, equals, not equal). If you set none, it is always lit. **Lit when - Invert** flips the result.
 
@@ -442,7 +460,7 @@ Other settings: **Effect while lit** (Steady, Blink or Fade), **Blink rate** and
 
 ### Carbon graphite background with corner screws
 
-![Carbon graphite](images/bg-carbon.png)
+![Carbon graphite](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/bg-carbon.png)
 
 ```yaml
 {square_image: /hacsfiles/photoreal-gauge-card/backgrounds/carbon-graphite-screws.jpg, gauge_margin: 7}
@@ -450,7 +468,7 @@ Other settings: **Effect while lit** (Steady, Blink or Fade), **Blink rate** and
 
 ### Dark brushed metal
 
-![Dark brushed metal with screws](images/bg-metal.png)
+![Dark brushed metal with screws](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/bg-metal.png)
 
 ```yaml
 {square_image: /hacsfiles/photoreal-gauge-card/backgrounds/dark-brushed-metal-screws.jpg, gauge_margin: 7}
@@ -458,7 +476,7 @@ Other settings: **Effect while lit** (Steady, Blink or Fade), **Blink rate** and
 
 A version without screws is `dark-brushed-metal.jpg`:
 
-![Dark brushed metal](images/bg-plain.png)
+![Dark brushed metal](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/bg-plain.png)
 
 ### Neon outer ring
 
@@ -532,17 +550,18 @@ Leave a margin around the gauge (**Gauge margin** 6 to 9) so the corner screws s
 |---|---|
 | "Custom element doesn't exist: photoreal-gauge-card" | The resource is not added, has the wrong type (it must be JavaScript module), or the browser cache is old. Check the URL by opening it in a browser tab, then hard refresh. |
 | The card shows `--` | The entity is missing, unavailable, or not numeric. Hover over the gauge to see "Entity not found" if the entity ID is wrong. Set `attribute` if the number is an attribute. |
-| The Help button says it could not load help.md | `help.md` must be in the same folder as the JavaScript file. Check that `/local/photoreal-gauge-card/help.md` opens in a browser tab. |
+| The Help button says it could not load README.md | `README.md` must be in the same folder as the JavaScript file. Open `/hacsfiles/photoreal-gauge-card/README.md` (HACS) or `/local/photoreal-gauge-card/README.md` (manual) in a browser tab to check. |
 | Images do not appear | Check the path. Files in `/config/www/` are served as `/local/...`. Open the image URL in a browser tab to test it. |
 | Outer glow is cut off | Increase **Gauge margin** so there is room around the ring. |
 | A label or LED is cut in half | Its X or Y is too close to 0 or 100. Items are centered on their position. |
-| Changes do not show after an update | Hard refresh, or add or increase `?v=2` on the resource URL. |
+| Changes do not show after an update | Hard refresh. With a manual install you can also add or increase `?v=2` on the resource URL. |
 | The needle does not move smoothly | Set **Needle animation (ms)** above 0. The animation is switched off if your device asks for reduced motion. |
 
 ## Version history
 
 | Version | Changes |
 |---|---|
+| 1.4.1 | Guide renamed from help.md to README.md, HACS install instructions and `/hacsfiles/` paths |
 | 1.4.0 | Info icon on every editor field, Help button with this guide, "Border" group renamed "Gauge outer ring", included example pictures |
 | 1.3.0 | LED blink/fade conditions in a dropdown, with AND/OR joins |
 | 1.2.0 | Multiple digital displays, "text when no data", LED fade effect with blink and fade rates, first LED conditions, threshold style options moved into Thresholds, needle tip glow moved into Needle |

@@ -1,11 +1,11 @@
 /*!
- * photoreal-gauge-card  v1.4.1
+ * photoreal-gauge-card  v1.4.2
  * Photo-realistic analog gauge card for Home Assistant (Lovelace)
  *
  * Coordinates for labels / LEDs / digital displays: X and Y are PERCENT of the
  * square card (0-100). 50,50 is the gauge centre. Sizes are % of card width.
  */
-const PGC_VERSION = "1.4.1";
+const PGC_VERSION = "1.4.2";
 
 const PGC_DEFAULTS = {
   // value
@@ -205,10 +205,16 @@ svg{left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .lbl>.t,.dig>.t{position:relative;display:block}
 .dig>.t{font-variant-numeric:tabular-nums}
 .led{transform:translate(-50%,-50%);border-radius:50%;pointer-events:auto}
-.led.blink{animation:pgcblink var(--r,1s) linear infinite}
-.led.fade{animation:pgcfade var(--r,2s) ease-in-out infinite}
-@keyframes pgcblink{0%,49.9%{opacity:1}50%,100%{opacity:.2}}
-@keyframes pgcfade{0%,100%{opacity:1}50%{opacity:.15}}
+/* The LED itself always shows its OFF look. The lit look sits on top (::before) and is what blinks or fades,
+   so the LED cycles between its lit color and its off color instead of disappearing. ::after is the bezel. */
+.led::before,.led::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none}
+.led::before{background:var(--on-bg,none);box-shadow:var(--on-glow,none);opacity:0;transition:opacity .15s}
+.led::after{box-shadow:var(--ring,none)}
+.led.lit::before{opacity:1}
+.led.blink::before{transition:none;animation:pgcblink var(--r,1s) linear infinite}
+.led.fade::before{transition:none;animation:pgcfade var(--r,2s) ease-in-out infinite}
+@keyframes pgcblink{0%,49.9%{opacity:1}50%,100%{opacity:0}}
+@keyframes pgcfade{0%,100%{opacity:1}50%{opacity:0}}
 .ndl{transform-origin:100px 100px;transition-property:transform;
     transition-timing-function:cubic-bezier(.34,1.25,.5,1)}
 @media (prefers-reduced-motion:reduce){.ndl{transition:none!important}.led.blink,.led.fade{animation:none}}
@@ -700,14 +706,13 @@ class PhotorealGaugeCard extends HTMLElement {
       const base = (ld.use_threshold_color && thr) || ld.color || "#ff1744";
       const c = parseColor(base, this);
       const ring = "0 0 0 .3cqw #8a8d92, 0 0 0 .5cqw #1b1b1b, 0 .2cqw .5cqw .5cqw rgba(0,0,0,.5)";
-      if (on) {
-        e.style.background = `radial-gradient(circle at 35% 30%, rgba(255,255,255,.95) 0%, ${rgba(mix(c, 255, 0.45), 1)} 22%, ${rgba(c, 1)} 55%, ${rgba(mix(c, 0, 0.5), 1)} 100%)`;
-        e.style.boxShadow = `${ring}, 0 0 ${sz * 0.9}cqw ${sz * 0.25}cqw ${rgba(c, 0.85)}`;
-      } else {
-        const off = ld.color_off ? parseColor(ld.color_off, this) : mix(c, 0, 0.78);
-        e.style.background = `radial-gradient(circle at 35% 30%, rgba(255,255,255,.28) 0%, ${rgba(off, 1)} 45%, rgba(0,0,0,1) 130%)`;
-        e.style.boxShadow = ring;
-      }
+      const off = ld.color_off ? parseColor(ld.color_off, this) : mix(c, 0, 0.78);
+      // base = off look (always there); ::before = lit look (shown when on, animated by blink / fade)
+      e.style.background = `radial-gradient(circle at 35% 30%, rgba(255,255,255,.28) 0%, ${rgba(off, 1)} 45%, rgba(0,0,0,1) 130%)`;
+      e.style.setProperty("--ring", ring);
+      e.style.setProperty("--on-bg", `radial-gradient(circle at 35% 30%, rgba(255,255,255,.95) 0%, ${rgba(mix(c, 255, 0.45), 1)} 22%, ${rgba(c, 1)} 55%, ${rgba(mix(c, 0, 0.5), 1)} 100%)`);
+      e.style.setProperty("--on-glow", `0 0 ${sz * 0.9}cqw ${sz * 0.25}cqw ${rgba(c, 0.85)}`);
+      e.classList.toggle("lit", on);
       e.style.setProperty("--r", rate + "s");
       e.classList.toggle("blink", fx && eff === "blink");
       e.classList.toggle("fade", fx && eff === "fade");
@@ -1105,9 +1110,9 @@ const PGC_HELP = {
     equals: "The LED is lit when the state equals this. Works for text states such as on or charging.",
     not_equals: "The LED is lit when the state differs from this.",
     invert: "Flips the result, so the LED is lit when the conditions are not met.",
-    effect: "Steady stays lit. Blink switches on and off. Fade smoothly dims and brightens. The effect only runs while the LED is lit and the Blink / fade conditions are met.",
-    blink_rate: "Seconds for one full on/off cycle. Lower numbers blink faster.",
-    fade_rate: "Seconds for one full fade out and back in. Lower numbers fade faster.",
+    effect: "Steady stays lit. Blink switches between the lit color and the off color. Fade smoothly changes between the lit color and the off color. The effect only runs while the LED is lit and the Blink / fade conditions are met.",
+    blink_rate: "Seconds for one full cycle between the lit color and the off color. Lower numbers blink faster.",
+    fade_rate: "Seconds for one full fade from the lit color to the off color and back. Lower numbers fade faster.",
   },
   cond: {
     entity: "Entity to check. Leave empty to use the gauge entity.",

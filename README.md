@@ -1,6 +1,6 @@
 # Photoreal Gauge Card
 
-Version 1.4.1
+Version 1.4.2
 
 ![A photo-realistic gauge on a carbon graphite panel](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/hero.png)
 
@@ -410,9 +410,9 @@ Each LED (Add LED):
 | Equals | `equals` | The LED is lit when the state equals this. Works for text states such as on or charging. | empty |
 | Not equals | `not_equals` | The LED is lit when the state differs from this. | empty |
 | Invert | `invert` | Flips the result, so the LED is lit when the conditions are not met. | off |
-| Effect while lit | `effect` | Steady stays lit. Blink switches on and off. Fade smoothly dims and brightens. The effect only runs while the LED is lit and the Blink / fade conditions are met. | `none` |
-| Blink rate (seconds per cycle) | `blink_rate` | Seconds for one full on/off cycle. Lower numbers blink faster. | `1` |
-| Fade rate (seconds per cycle) | `fade_rate` | Seconds for one full fade out and back in. Lower numbers fade faster. | `2` |
+| Effect while lit | `effect` | Steady stays lit. Blink switches between the lit color and the off color. Fade smoothly changes between the lit color and the off color. The effect only runs while the LED is lit and the Blink / fade conditions are met. | `none` |
+| Blink rate (seconds per cycle) | `blink_rate` | Seconds for one full cycle between the lit color and the off color. Lower numbers blink faster. | `1` |
+| Fade rate (seconds per cycle) | `fade_rate` | Seconds for one full fade from the lit color to the off color and back. Lower numbers fade faster. | `2` |
 
 ![LED examples](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/leds.png)
 
@@ -453,6 +453,10 @@ leds:
   effect_conditions:
   - {entity: sensor.battery_level, operator: below, value: '100'}
 ```
+
+Blinking and fading cycle between the LED's lit color and its **Color when off**, so the LED always stays visible.
+
+![LEDs: steady, blink and fade](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/led-effects.gif)
 
 Other settings: **Effect while lit** (Steady, Blink or Fade), **Blink rate** and **Fade rate** (seconds per cycle). If you enable Reduce Motion on your device, blinking and fading are switched off.
 
@@ -561,6 +565,7 @@ Leave a margin around the gauge (**Gauge margin** 6 to 9) so the corner screws s
 
 | Version | Changes |
 |---|---|
+| 1.4.2 | LED blink and fade now cycle between the lit color and the off color instead of fading the whole LED out |
 | 1.4.1 | Guide renamed from help.md to README.md, HACS install instructions and `/hacsfiles/` paths |
 | 1.4.0 | Info icon on every editor field, Help button with this guide, "Border" group renamed "Gauge outer ring", included example pictures |
 | 1.3.0 | LED blink/fade conditions in a dropdown, with AND/OR joins |

@@ -1,6 +1,6 @@
 # Photoreal Gauge Card
 
-Version 1.5.0
+Version 1.6.0
 
 ![A photo-realistic gauge on a carbon graphite panel](images/hero.png)
 
@@ -18,6 +18,7 @@ Photoreal Gauge Card is a custom Lovelace card for Home Assistant that draws a r
 - [LED conditions](#led-conditions)
 - [Use gauge entity](#use-gauge-entity)
 - [Examples with pictures](#examples-with-pictures)
+- [Ready-made themes](#ready-made-themes)
 - [Fonts](#fonts)
 - [Backgrounds and images](#backgrounds-and-images)
 - [Troubleshooting](#troubleshooting)
@@ -49,8 +50,9 @@ You need access to the `/config` folder (File editor, Studio Code Server, Samba,
 /config/www/photoreal-gauge-card/
     photoreal-gauge-card.js
     README.md
-    images/          (pictures used by this guide, plus sample-needle.png)
-    backgrounds/     (ready-made square backgrounds)
+    images/                  (pictures used by this guide)
+    photoreal-gauge-images/  (60 ready-made backgrounds, dials, rings, needles, hubs, label plates)
+    fonts/                   (24 ready-made fonts and fonts.css)
 ```
 
 2. Turn on **Advanced mode** in your user profile (click your name at the bottom of the sidebar). Resources are hidden without it.
@@ -91,7 +93,7 @@ The entity must have a numeric state (or a numeric attribute, set with `attribut
 type: custom:photoreal-gauge-card
 entity: sensor.demo
 name: Battery
-square_image: /hacsfiles/photoreal-gauge-card/backgrounds/carbon-graphite-screws.jpg
+square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/carbon-graphite-screws.jpg
 thresholds:
 - {from: 0, to: 25, color: '#e53935'}
 - {from: 25, to: 60, color: '#fdd835'}
@@ -100,7 +102,7 @@ threshold_glow: true
 digitals:
 - {y: 76}
 labels:
-- {text: '{name}', x: 50, y: 30, size: 5.5, color: '#cfd8dc'}
+- {text: '{name}', x: 50, y: 42, size: 5.5, color: '#cfd8dc'}
 leds:
 - x: 50
   y: 88
@@ -206,7 +208,7 @@ hold_action: {action: more-info}
 | Square radius | `square_radius` | How rounded the corners of the square background are, as a percentage of the card width. 0 gives sharp corners. | `4` |
 | Square color | `square_color` | Fill color of the square behind the dial. By default it matches the dashboard's card background. | dashboard card color |
 | Square color opacity | `square_color_opacity` | Opacity of the square's fill color, from 0 (transparent) to 1 (solid). | `1` |
-| Square image URL | `square_image` | URL of an image for the square background, for example /hacsfiles/photoreal-gauge-card/backgrounds/carbon-graphite-screws.jpg (HACS) or /hacsfiles/photoreal-gauge-card/backgrounds/carbon-graphite-screws.jpg (manual install). It is scaled to cover the square and drawn over the fill color. | empty |
+| Square image URL | `square_image` | URL of an image for the square background, for example /hacsfiles/photoreal-gauge-card/backgrounds/carbon-graphite-screws.jpg (HACS) or /local/photoreal-gauge-card/backgrounds/carbon-graphite-screws.jpg (manual install). It is scaled to cover the square and drawn over the fill color. | empty |
 | Square image opacity | `square_image_opacity` | Opacity of the square background image. Lower it to let the fill color show through. | `1` |
 | Circle color | `circle_color` | Fill color of the round dial face inside the outer ring. | `#1b1f24` |
 | Circle color opacity | `circle_color_opacity` | Opacity of the dial face color. Lower it to let the square background show through the dial. | `1` |
@@ -282,7 +284,7 @@ For each marker the card uses, in this order: the marker entity, then the fixed 
 | Needle image width | `needle_image_width` | Width of the needle picture. Its height follows Needle length and tail. | `16` |
 | Needle shadow | `needle_shadow` | Casts a soft shadow from the needle onto the dial. | on |
 | Needle animation (ms) | `needle_animation_ms` | Time the needle takes to swing to a new value, in milliseconds. 0 jumps instantly. | `900` |
-| Needle tip glow | `needle_tip_glow` | Adds a small glowing line near the end of the needle. | on |
+| Needle tip glow | `needle_tip_glow` | Adds a small glowing line near the end of the needle. Off by default. | off |
 | Needle tip length | `needle_tip_length` | Length of the glowing line as a percentage of the dial radius. | `14` |
 | Needle tip offset | `needle_tip_offset` | How far back from the very end of the needle the glow starts, as a percentage of the dial radius. | `0` |
 | Needle tip color | `needle_tip_color` | Glow color. Used when Tip uses threshold color is off, and as the fallback when no threshold matches the value. | `#ffffff` |
@@ -292,15 +294,16 @@ For each marker the card uses, in this order: the marker entity, then the fixed 
 
 ![Needle types](images/needles.png)
 
-To use your own needle picture, make a PNG with a transparent background, drawn pointing straight up, with the pivot point about 85 percent of the way down. A ready-made example is included as `images/sample-needle.png`:
+To use your own needle picture, make a PNG with a transparent background, drawn pointing straight up, with the pivot point about 85 percent of the way down. A ready-made example is included as `photoreal-gauge-images/Needles/sample-needle.png`:
 
 ```yaml
-{needle_type: image, needle_image: /hacsfiles/photoreal-gauge-card/images/sample-needle.png, needle_image_width: 14}
+{needle_type: image, needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/sample-needle.png,
+  needle_image_width: 14}
 ```
 
 #### Needle tip glow
 
-The tip glow options are part of the Needle group. With **Tip uses threshold color** on, the glow takes the color of the threshold the value is in.
+The tip glow is **off by default**. Turn on **Needle tip glow** in the Needle group to use it, together with the other tip options there. With **Tip uses threshold color** on, the glow takes the color of the threshold the value is in.
 
 ![Needle tip glow variants](images/tip-glow.png)
 
@@ -317,7 +320,7 @@ The tip glow options are part of the Needle group. With **Tip uses threshold col
 
 | Option | YAML key | What it does | Default |
 |---|---|---|---|
-| Font urls | `font_urls` | List of stylesheet URLs to load, such as a Google Fonts link. Example: - https://fonts.googleapis.com/css2?family=Orbitron&display=swap | empty |
+| Font urls | `font_urls` | List of stylesheet URLs to load, such as a Google Fonts link. Example: - https://fonts.googleapis.com/css2?family=Orbitron&display=swap. To use the 24 fonts that come with the card, add: - /hacsfiles/photoreal-gauge-card/fonts/fonts.css | empty |
 | Custom fonts | `custom_fonts` | List of self-hosted fonts. Each item needs family and url, for example family: DSEG7 and url: /local/fonts/DSEG7.woff2. | empty |
 
 ### Thresholds
@@ -498,7 +501,8 @@ In YAML: `use_gauge_entity: false` together with `entity: sensor.other`. The min
 ![Carbon graphite](images/bg-carbon.png)
 
 ```yaml
-{square_image: /hacsfiles/photoreal-gauge-card/backgrounds/carbon-graphite-screws.jpg, gauge_margin: 7}
+{square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/carbon-graphite-screws.jpg,
+  gauge_margin: 7}
 ```
 
 ### Dark brushed metal
@@ -506,7 +510,8 @@ In YAML: `use_gauge_entity: false` together with `entity: sensor.other`. The min
 ![Dark brushed metal with screws](images/bg-metal.png)
 
 ```yaml
-{square_image: /hacsfiles/photoreal-gauge-card/backgrounds/dark-brushed-metal-screws.jpg, gauge_margin: 7}
+{square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/dark-brushed-metal-screws.jpg,
+  gauge_margin: 7}
 ```
 
 A version without screws is `dark-brushed-metal.jpg`:
@@ -550,9 +555,214 @@ labels:
 - {text: '{name}', x: 50, y: 30, size: 5}
 ```
 
+## Ready-made themes
+
+The `photoreal-gauge-images` and `fonts` folders contain everything for six complete looks. Paste a block into the card's YAML editor and change the `entity`. The `font_urls` line loads the bundled fonts.
+
+![The six ready-made themes](images/Example_gauges.jpg)
+
+### Stargate style: stone, glyphs, bronze crystal needle
+
+![Stargate](images/Theme_Stargate.jpg)
+
+```yaml
+type: custom:photoreal-gauge-card
+entity: sensor.your_entity
+name: Battery
+gauge_margin: 6
+thresholds:
+- {from: 0, to: 25, color: '#e53935'}
+- {from: 25, to: 60, color: '#fdd835'}
+- {from: 60, to: 100, color: '#43a047'}
+font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
+number_font: Cinzel
+square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/07-stargate-stone-glyphs.jpg
+circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/07-stargate-stone-disc.jpg
+border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/07-stargate-chevron-ring.jpg
+needle_type: image
+needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/07-stargate-bronze-crystal.png
+needle_image_width: 16
+hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/07-stargate-crystal-core.png
+digitals:
+- {y: 76, width: 30, font: Quantico, font_size: 6.5, color: '#ffb347', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/07-stargate-stone-glyphs.jpg,
+  bg_opacity: 1}
+labels:
+- {text: '{name}', x: 50, y: 62, size: 5, font: Cinzel Decorative, color: '#e8d9a8'}
+major_tick_color: '#e8d9a8'
+number_color: '#e8d9a8'
+```
+
+### Chrome and white enamel
+
+![Chrome_enamel](images/Theme_Chrome_enamel.jpg)
+
+```yaml
+type: custom:photoreal-gauge-card
+entity: sensor.your_entity
+name: Battery
+gauge_margin: 6
+thresholds:
+- {from: 0, to: 25, color: '#e53935'}
+- {from: 25, to: 60, color: '#fdd835'}
+- {from: 60, to: 100, color: '#43a047'}
+font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
+number_font: Saira Condensed
+square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/02-brushed-aluminum.jpg
+circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/01-white-enamel.jpg
+border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/01-chrome.jpg
+needle_type: image
+needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/01-chrome-pointer.png
+needle_image_width: 16
+hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/01-chrome-dome.png
+digitals:
+- {y: 76, width: 30, font: Rajdhani, font_size: 6.5, color: '#1a1a1a', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/01-brushed-steel-plate.jpg,
+  bg_opacity: 1}
+labels:
+- {text: '{name}', x: 50, y: 62, size: 5, font: Oswald, color: '#333333'}
+number_color: '#1a1a1a'
+major_tick_color: '#1a1a1a'
+minor_tick_color: '#555555'
+```
+
+### Radar green on smoked glass
+
+![Radar](images/Theme_Radar.jpg)
+
+```yaml
+type: custom:photoreal-gauge-card
+entity: sensor.your_entity
+name: Battery
+gauge_margin: 6
+thresholds:
+- {from: 0, to: 25, color: '#e53935'}
+- {from: 25, to: 60, color: '#fdd835'}
+- {from: 60, to: 100, color: '#43a047'}
+font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
+number_font: Share Tech Mono
+square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/06-smoked-glass.jpg
+circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/09-radar-green.jpg
+border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/06-blue-glass.jpg
+needle_type: image
+needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/09-neon-green-line.png
+needle_image_width: 16
+hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/04-glass-dome.png
+digitals:
+- {y: 76, width: 30, font: VT323, font_size: 6.5, color: '#16351a', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/04-green-lcd.jpg,
+  bg_opacity: 1}
+labels:
+- {text: '{name}', x: 50, y: 62, size: 5, font: Share Tech Mono, color: '#9dffb0'}
+number_color: '#9dffb0'
+major_tick_color: '#9dffb0'
+```
+
+### Carbon fiber and red racing
+
+![Carbon_red](images/Theme_Carbon_red.jpg)
+
+```yaml
+type: custom:photoreal-gauge-card
+entity: sensor.your_entity
+name: Battery
+gauge_margin: 6
+thresholds:
+- {from: 0, to: 25, color: '#e53935'}
+- {from: 25, to: 60, color: '#fdd835'}
+- {from: 60, to: 100, color: '#43a047'}
+font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
+number_font: Orbitron
+square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/04-carbon-fiber.jpg
+circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/02-matte-black.jpg
+border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/10-red-neon-anodized.jpg
+needle_type: image
+needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/02-red-plastic.png
+needle_image_width: 16
+hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/03-black-plastic-dome.png
+digitals:
+- {y: 76, width: 30, font: Orbitron, font_size: 6.5, color: '#ff4d4d', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/08-carbon-fiber.jpg,
+  bg_opacity: 1}
+labels:
+- {text: '{name}', x: 50, y: 62, size: 5, font: Oxanium, color: '#f0f0f0'}
+```
+
+### Brass steampunk
+
+![Brass_steampunk](images/Theme_Brass_steampunk.jpg)
+
+```yaml
+type: custom:photoreal-gauge-card
+entity: sensor.your_entity
+name: Battery
+gauge_margin: 6
+thresholds:
+- {from: 0, to: 25, color: '#e53935'}
+- {from: 25, to: 60, color: '#fdd835'}
+- {from: 60, to: 100, color: '#43a047'}
+font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
+number_font: IM Fell English SC
+square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/08-brass-steampunk.jpg
+circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/06-vintage-cream.jpg
+border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/09-riveted-brass.jpg
+needle_type: image
+needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/03-brass-spear.png
+needle_image_width: 16
+hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/02-brass-dome.png
+digitals:
+- {y: 76, width: 30, font: Cinzel Decorative, font_size: 6.5, color: '#2e1f0a', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/06-brass-plate.jpg,
+  bg_opacity: 1}
+labels:
+- {text: '{name}', x: 50, y: 62, size: 5, font: Rye, color: '#4a3a1e'}
+number_color: '#3a2a12'
+major_tick_color: '#3a2a12'
+minor_tick_color: '#6b5530'
+```
+
+### Lava and sci-fi bulkhead
+
+![Lava](images/Theme_Lava.jpg)
+
+```yaml
+type: custom:photoreal-gauge-card
+entity: sensor.your_entity
+name: Battery
+gauge_margin: 6
+thresholds:
+- {from: 0, to: 25, color: '#e53935'}
+- {from: 25, to: 60, color: '#fdd835'}
+- {from: 60, to: 100, color: '#43a047'}
+font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
+number_font: Black Ops One
+square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/10-scifi-bulkhead.jpg
+circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/10-lava-cracks.jpg
+border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/08-knurled-steel.jpg
+needle_type: image
+needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/06-orange-arrow.png
+needle_image_width: 16
+hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/09-ruby-jewel.png
+digitals:
+- {y: 76, width: 30, font: Wallpoet, font_size: 6.5, color: '#ffb02e', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/05-amber-display.jpg,
+  bg_opacity: 1}
+labels:
+- {text: '{name}', x: 50, y: 62, size: 5, font: Bungee Shade, color: '#fff1d6', bg_color: '#000000', bg_opacity: 0.6,
+  padding: 0.8, radius: 1.2}
+```
+
 ## Fonts
 
-Fonts are set per element (scale numbers, labels, digital displays). Choose one from the list or type any font family name. To use a web font, add its stylesheet under **Custom fonts**:
+Fonts are set per element (scale numbers, labels, digital displays). Choose one from the list or type any font family name.
+
+### Bundled fonts
+
+24 open-licensed fonts (SIL Open Font License) come with the card in the `fonts` folder and work offline. Add one line and they all appear in the font dropdowns:
+
+```yaml
+font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
+```
+
+Orbitron, Share Tech Mono, Cinzel, Cinzel Decorative, Rajdhani, Oswald, Saira Condensed, Quantico, Oxanium, Chakra Petch, Exo 2, IM Fell English SC, Rye, Bungee, Bungee Shade, Black Ops One, Wallpoet, Audiowide, Michroma, Electrolize, Iceland, VT323, Major Mono Display, Jacquard 24.
+
+### Other web fonts
+
+To use a web font, add its stylesheet under **Custom fonts**:
 
 ```yaml
 font_urls: ['https://fonts.googleapis.com/css2?family=Orbitron&display=swap']
@@ -569,15 +779,18 @@ Then enter `DSEG7` as the font of a digital display.
 
 ## Backgrounds and images
 
-Any image URL field accepts a path under `/local/` (files in `/config/www/`), a full `https://` address. Backgrounds are scaled to cover the square. Ready-made, dark 1280 by 1280 backgrounds are in the `backgrounds` folder:
+Any image URL field accepts a path under `/local/` (files in `/config/www/`) or a full `https://` address. The card ships with 60 ready-made pictures in `photoreal-gauge-images`, 10 for each place a picture can go:
 
-| File | Look |
-|---|---|
-| `carbon-graphite-screws.jpg` | Carbon fiber weave with a screw in each corner |
-| `dark-brushed-metal-screws.jpg` | Dark brushed metal with a screw in each corner |
-| `dark-brushed-metal.jpg` | Plain dark brushed metal |
+| Folder | Card field | Size |
+|---|---|---|
+| `Square_backgrounds` | `square_image` | 1024 x 1024 JPG, scaled to cover the square |
+| `Dial_faces` | `circle_image` | 1024 x 1024 JPG |
+| `Outer_rings` | `border_image` | 1024 x 1024 JPG, only the ring band shows |
+| `Needles` | `needle_image` (with `needle_type: image`) | 128 x 768 transparent PNG |
+| `Hubs` | `hub_image` | 512 x 512 transparent PNG |
+| `Label_and_display_backgrounds` | `bg_image` of a label or digital display | 768 x 288 JPG |
 
-Leave a margin around the gauge (**Gauge margin** 6 to 9) so the corner screws stay visible.
+`photoreal-gauge-images/README.md` lists every picture, and `_previews` has a contact sheet per folder. The three original dark backgrounds are in `Square_backgrounds` (`carbon-graphite-screws.jpg`, `dark-brushed-metal-screws.jpg`, `dark-brushed-metal.jpg`). Leave a margin around the gauge (**Gauge margin** 6 to 9) so the corner screws stay visible.
 
 ## Troubleshooting
 
@@ -596,6 +809,7 @@ Leave a margin around the gauge (**Gauge margin** 6 to 9) so the corner screws s
 
 | Version | Changes |
 |---|---|
+| 1.6.0 | **Bundled picture pack** (`photoreal-gauge-images`, 60 images in six folders) and **bundled fonts** (`fonts`, 24 families). Adding `fonts/fonts.css` under Font urls lists all of them in the font dropdowns. Six ready-made themes. **Needle tip glow is now off by default** (turn it on with `needle_tip_glow: true`). The three starter backgrounds moved to `photoreal-gauge-images/Square_backgrounds` and `sample-needle.png` to `photoreal-gauge-images/Needles`; update old `/backgrounds/` and `/images/sample-needle.png` paths. |
 | 1.5.0 | **Use gauge entity** check box on digital displays, text labels and LED conditions. LED indicators reworked: named, re-orderable conditions (first met wins), each with its own entity, On/Off colors or threshold color, behavior (Off, On, Blink, Fade) and separate blink on/off and fade in/out times. New LED default color. Operators now read Greater than / Less than. Older LED settings still work. Fonts added under Font urls or Custom fonts now appear in the font dropdowns, and a single URL is accepted for Font urls. |
 | 1.4.2 | LED blink and fade now cycle between the lit color and the off color instead of fading the whole LED out |
 | 1.4.1 | Guide renamed from help.md to README.md, HACS install instructions and `/hacsfiles/` paths |

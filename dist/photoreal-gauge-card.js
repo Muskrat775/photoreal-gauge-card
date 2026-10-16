@@ -1,11 +1,11 @@
 /*!
- * photoreal-gauge-card  v1.5.0
+ * photoreal-gauge-card  v1.6.0
  * Photo-realistic analog gauge card for Home Assistant (Lovelace)
  *
  * Coordinates for labels / LEDs / digital displays: X and Y are PERCENT of the
  * square card (0-100). 50,50 is the gauge centre. Sizes are % of card width.
  */
-const PGC_VERSION = "1.5.0";
+const PGC_VERSION = "1.6.0";
 
 const PGC_DEFAULTS = {
   // value
@@ -44,7 +44,7 @@ const PGC_DEFAULTS = {
   needle_opacity: 1, needle_tail: 14, needle_image: "", needle_image_width: 16,
   needle_shadow: true, needle_animation_ms: 900,
   // needle tip glow
-  needle_tip_glow: true, needle_tip_length: 14, needle_tip_offset: 0, needle_tip_color: "#ffffff",
+  needle_tip_glow: false, needle_tip_length: 14, needle_tip_offset: 0, needle_tip_color: "#ffffff",
   needle_tip_opacity: 1, needle_tip_use_threshold: true, needle_tip_glow_intensity: 60,
   // hub
   hub_size: 7, hub_color: "#c9ccd1", hub_image: "", hub_opacity: 1,
@@ -908,10 +908,12 @@ const act = (name) => ({ name, selector: { ui_action: {} } });
 const obj = (name) => ({ name, selector: { object: {} } });
 const sel = (name, options) => ({ name, selector: { select: { mode: "dropdown", options } } });
 /* Font families named by font_urls (Google Fonts links) and custom_fonts, so they show up in the font dropdowns. */
+const PGC_BUNDLED_FONTS = ["Orbitron", "Share Tech Mono", "Cinzel", "Cinzel Decorative", "Rajdhani", "Oswald", "Saira Condensed", "Quantico", "Oxanium", "Chakra Petch", "Exo 2", "IM Fell English SC", "Rye", "Bungee", "Bungee Shade", "Black Ops One", "Wallpoet", "Audiowide", "Michroma", "Electrolize", "Iceland", "VT323", "Major Mono Display", "Jacquard 24"];
 function pgcConfigFonts(cfg) {
   const list = (v) => (Array.isArray(v) ? v : v ? [v] : []), out = [];
   list(cfg.font_urls).forEach((u) => {
     if (typeof u !== "string") return;
+    if (/photoreal-gauge-card\/fonts\/fonts\.css|\/fonts\/fonts\.css(\?|$)/.test(u)) out.push(...PGC_BUNDLED_FONTS);  // the bundled font pack
     const m = u.match(/[?&]family=([^&]+)/g) || [];
     m.forEach((q) => { const n = decodeURIComponent(q.replace(/^[?&]family=/, "").split(":")[0].replace(/\+/g, " ")).trim(); if (n) out.push(n); });
   });
@@ -1131,7 +1133,7 @@ const PGC_HELP = {
     needle_image_width: "Width of the needle picture. Its height follows Needle length and tail.",
     needle_shadow: "Casts a soft shadow from the needle onto the dial.",
     needle_animation_ms: "Time the needle takes to swing to a new value, in milliseconds. 0 jumps instantly.",
-    needle_tip_glow: "Adds a small glowing line near the end of the needle.",
+    needle_tip_glow: "Adds a small glowing line near the end of the needle. Off by default.",
     needle_tip_length: "Length of the glowing line as a percentage of the dial radius.",
     needle_tip_offset: "How far back from the very end of the needle the glow starts, as a percentage of the dial radius.",
     needle_tip_color: "Glow color. Used when Tip uses threshold color is off, and as the fallback when no threshold matches the value.",
@@ -1142,7 +1144,7 @@ const PGC_HELP = {
     hub_color: "Color of the hub. Shading is added automatically for a domed metal look.",
     hub_image: "URL of an image for the hub, for example a brushed-metal cap. It is cropped to a circle.",
     hub_opacity: "Opacity of the hub.",
-    font_urls: "List of stylesheet URLs to load, such as a Google Fonts link. Example: - https://fonts.googleapis.com/css2?family=Orbitron&display=swap",
+    font_urls: "List of stylesheet URLs to load, such as a Google Fonts link. Example: - https://fonts.googleapis.com/css2?family=Orbitron&display=swap. To use the 24 fonts that come with the card, add: - /hacsfiles/photoreal-gauge-card/fonts/fonts.css",
     custom_fonts: "List of self-hosted fonts. Each item needs family and url, for example family: DSEG7 and url: /local/fonts/DSEG7.woff2.",
     threshold_position: "Place the colored arcs outside the tick marks or inside them.",
     threshold_width: "Thickness of the colored arcs as a percentage of the dial radius.",

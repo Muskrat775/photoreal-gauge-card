@@ -1,11 +1,11 @@
 /*!
- * photoreal-gauge-card  v1.4.2
+ * photoreal-gauge-card  v1.5.0
  * Photo-realistic analog gauge card for Home Assistant (Lovelace)
  *
  * Coordinates for labels / LEDs / digital displays: X and Y are PERCENT of the
  * square card (0-100). 50,50 is the gauge centre. Sizes are % of card width.
  */
-const PGC_VERSION = "1.4.2";
+const PGC_VERSION = "1.5.0";
 
 const PGC_DEFAULTS = {
   // value
@@ -173,6 +173,47 @@ function evalConds(conds, read) {
   return result || group;
 }
 
+/* ---- "Use gauge entity": an item reads the gauge entity unless it names its own and the box is un-checked.
+   Configs written before v1.5 have no use_gauge_entity key; an item that already names an entity keeps using it. ---- */
+const pgcEnt = (o) => ((o.use_gauge_entity ?? !o.entity) ? null : (o.entity || null));
+
+/* ---- LED model (v1.5): default_color + an ordered list of named conditions; the first one that is met wins.
+   A condition: name, use_gauge_entity/entity/attribute, operator/value, color/color_off/use_threshold_color,
+   behavior (off|on|blink|fade), blink_on/blink_off, fade_in/fade_out. No value = always met. ---- */
+const PGC_OP_INVERT = { above: "below_or_equal", below: "above_or_equal", above_or_equal: "below", below_or_equal: "above", equals: "not_equals", not_equals: "equals" };
+const PGC_LED_LEGACY_KEYS = ["color", "color_off", "use_threshold_color", "entity", "attribute", "above", "below", "equals", "not_equals",
+  "invert", "effect", "blink", "blink_rate", "fade_rate", ...PGC_EFFECT_LEGACY_KEYS, "effect_conditions"];
+function pgcLedModel(ld) {
+  if (Array.isArray(ld.conditions)) return { def: ld.default_color, conds: ld.conditions };
+  const def = ld.default_color ?? ld.color_off;
+  const tests = ["above", "below", "equals", "not_equals"].filter((k) => hasVal(ld[k]));
+  if (ld.invert && !tests.length) return { def, conds: [] };            // "always lit" flipped = never lit
+  const c = { name: "Lit" };
+  if (hasVal(ld.entity)) { c.entity = ld.entity; c.use_gauge_entity = false; }
+  if (hasVal(ld.attribute)) c.attribute = ld.attribute;
+  if (tests.length === 1) { c.operator = tests[0]; c.value = ld[tests[0]]; if (ld.invert) c.operator = PGC_OP_INVERT[c.operator]; }
+  else { tests.forEach((k) => (c[k] = ld[k])); if (ld.invert) c.invert = true; }
+  if (ld.color) c.color = ld.color;
+  if (ld.color_off) c.color_off = ld.color_off;
+  if (ld.use_threshold_color) c.use_threshold_color = true;
+  const eff = ld.effect || (ld.blink ? "blink" : "none");
+  if (eff === "blink" || eff === "fade") {
+    c.behavior = eff;
+    const half = (Math.max(0.1, +(eff === "fade" ? (ld.fade_rate ?? 2) : (ld.blink_rate ?? 1)) || 1)) / 2;
+    if (eff === "blink") { c.blink_on = half; c.blink_off = half; } else { c.fade_in = half; c.fade_out = half; }
+    const ec = pgcEffectConds(ld);
+    if (ec.length) c.effect_conditions = ec;
+  }
+  return { def, conds: [c] };
+}
+function pgcCondTrue(cd, read, C) {
+  const e = pgcEnt(cd);
+  const r = e ? read(e, cd.attribute) : read(C.entity, cd.attribute || C.attribute);
+  if (!r.s) return false;
+  const ok = cd.operator ? (hasVal(cd.value) ? testOp(r.raw, cd.operator, cd.value) : true) : condMet(r.raw, cd);
+  return cd.invert ? !ok : ok;
+}
+
 /* The list of digital displays: the `digitals` list, or one built from legacy digital_* keys. */
 function pgcDigitalList(config) {
   if (Array.isArray(config.digitals)) return config.digitals;
@@ -211,13 +252,10 @@ svg{left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .led::before{background:var(--on-bg,none);box-shadow:var(--on-glow,none);opacity:0;transition:opacity .15s}
 .led::after{box-shadow:var(--ring,none)}
 .led.lit::before{opacity:1}
-.led.blink::before{transition:none;animation:pgcblink var(--r,1s) linear infinite}
-.led.fade::before{transition:none;animation:pgcfade var(--r,2s) ease-in-out infinite}
-@keyframes pgcblink{0%,49.9%{opacity:1}50%,100%{opacity:0}}
-@keyframes pgcfade{0%,100%{opacity:1}50%{opacity:0}}
+.led.fx::before{transition:none;animation:var(--an) var(--r,1s) var(--tf,linear) infinite}
 .ndl{transform-origin:100px 100px;transition-property:transform;
     transition-timing-function:cubic-bezier(.34,1.25,.5,1)}
-@media (prefers-reduced-motion:reduce){.ndl{transition:none!important}.led.blink,.led.fade{animation:none}}
+@media (prefers-reduced-motion:reduce){.ndl{transition:none!important}.led.fx::before{animation:none}}
 `;
 
 /* ================================================================== CARD */
@@ -243,7 +281,7 @@ class PhotorealGaugeCard extends HTMLElement {
         { text: "Battery", x: 50, y: 33, color: "#4aa3ff", size: 7 },
         { text: "Charge %", x: 50, y: 66, color: "#ff5252", size: 5.5 },
       ],
-      leds: [{ x: 30, y: 82, color: "#ff1744", above: 90 }],
+      leds: [{ x: 30, y: 82, label: "High", conditions: [{ name: "Above 90", operator: "above", value: 90, color: "#ff1744", behavior: "on" }] }],
       digitals: [{ x: 50, y: 78 }],
     };
   }
@@ -257,15 +295,20 @@ class PhotorealGaugeCard extends HTMLElement {
     const c = normColors({ ...PGC_DEFAULTS, ...config }, PGC_COLOR_KEYS);
     c.thresholds = (c.thresholds || []).map((t) => normColors(t, ["color"]));
     c.labels = (c.labels || []).map((t) => normColors(t, ["color", "bg_color"]));
-    c.leds = (c.leds || []).map((t) => normColors(t, ["color", "color_off"]));
+    c.leds = (c.leds || []).map((t) => {
+      const m = pgcLedModel(normColors(t, ["color", "color_off", "default_color"]));
+      return { ...t, _def: m.def, _conds: m.conds.map((cd) => normColors(cd, ["color", "color_off"])) };
+    });
     c.digitals = pgcDigitalList(config).map((t) => normColors({ ...PGC_DIGITAL_DEFAULTS, ...t }, ["color", "bg_color"]));
+    // font_urls / custom_fonts: accept a single value (a bare URL line in the editor) as well as a list
+    ["font_urls", "custom_fonts"].forEach((k) => { c[k] = Array.isArray(c[k]) ? c[k] : (c[k] && typeof c[k] !== "number") ? [c[k]] : []; });
     PGC_ACTION_KEYS.forEach((k) => (c[k] = normAction(c[k], PGC_DEFAULTS[k])));
     if (!(+c.max > +c.min)) throw new Error("photoreal-gauge-card: 'max' must be greater than 'min'");
     this._c = c;
     this._ents = [c.entity, c.min_marker_entity, c.max_marker_entity,
-      ...c.labels.map((l) => l.entity),
-      ...c.leds.flatMap((l) => [l.entity, ...pgcEffectConds(l).map((x) => x.entity)]),
-      ...c.digitals.map((d) => d.entity)].filter(Boolean);
+      ...c.labels.map(pgcEnt),
+      ...c.leds.flatMap((l) => l._conds.flatMap((cd) => [pgcEnt(cd), ...(cd.effect_conditions || []).map((x) => x.entity)])),
+      ...c.digitals.map(pgcEnt)].filter(Boolean);
     this._ready = false;
     this._mm = null;
     this._build();
@@ -336,12 +379,13 @@ class PhotorealGaugeCard extends HTMLElement {
   /* ------------------------------------------------------------- fonts */
   _loadFonts() {
     (this._c.font_urls || []).forEach((href) => {
-      if (_pgcLoaded.has(href)) return;
+      if (typeof href !== "string" || !href || _pgcLoaded.has(href)) return;
       _pgcLoaded.add(href);
       const l = document.createElement("link");
       l.rel = "stylesheet"; l.href = href; document.head.appendChild(l);
     });
     (this._c.custom_fonts || []).forEach((f) => {
+      if (!f || !f.family || !f.url) return;
       const key = f.family + f.url;
       if (_pgcLoaded.has(key)) return;
       _pgcLoaded.add(key);
@@ -511,7 +555,7 @@ class PhotorealGaugeCard extends HTMLElement {
     </svg>`;
 
     /* ----- skeleton ----- */
-    root.innerHTML = `<style>${PGC_CSS}</style>
+    root.innerHTML = `<style>${PGC_CSS}</style><style class="fx"></style>
       <ha-card><div class="sq">
         <div class="l sqbg"></div><div class="l sqimg"></div>
         <div class="bezel"></div>
@@ -617,6 +661,7 @@ class PhotorealGaugeCard extends HTMLElement {
       return { e, ld, s };
     });
 
+    this._fx = root.querySelector("style.fx"); this._fxText = "";
     this._el = {
       nb: $(".nb"), tipg: $(".tipg"), tgs: [...root.querySelectorAll(".tg")], tc: $(".tc"),
       mmin: $(".mmin"), mmax: $(".mmax"),
@@ -660,14 +705,15 @@ class PhotorealGaugeCard extends HTMLElement {
 
     /* digital displays: each can read its own entity; shows no_data_text when there is no usable number */
     this._digs.forEach(({ d, tx }) => {
-      const own = d.entity ? this._read(d.entity, d.attribute) : this._read(C.entity, d.attribute || C.attribute);
+      const de = pgcEnt(d);
+      const own = de ? this._read(de, d.attribute) : this._read(C.entity, d.attribute || C.attribute);
       const dv = parseFloat(own.raw);
       if (!own.s || isNaN(dv)) {
         const nd = hasVal(d.no_data_text) ? String(d.no_data_text) : "--";
         tx.textContent = nd.trim() === "" ? " " : nd;
         return;
       }
-      const du = d.unit ?? (d.entity ? own.s.attributes?.unit_of_measurement : unit) ?? "";
+      const du = d.unit ?? (de ? own.s.attributes?.unit_of_measurement : unit) ?? "";
       const dd = hasVal(d.decimals) ? +d.decimals : +C.decimals;
       tx.textContent = dv.toFixed(dd) + (d.show_unit && du ? " " + du : "");
     });
@@ -680,7 +726,8 @@ class PhotorealGaugeCard extends HTMLElement {
 
     /* labels */
     this._lbls.forEach(({ tx, lb }) => {
-      const ls = lb.entity ? this._read(lb.entity, lb.attribute) : { s, raw };
+      const le = pgcEnt(lb);
+      const ls = le ? this._read(le, lb.attribute) : { s, raw };
       tx.textContent = String(lb.text ?? "")
         .replace(/\{value\}/g, ok ? v.toFixed(+C.decimals) : "--")
         .replace(/\{state\}/g, ls.raw ?? "--")
@@ -688,35 +735,45 @@ class PhotorealGaugeCard extends HTMLElement {
         .replace(/\{name\}/g, name);
     });
 
-    /* LEDs: lit by the "Lit when" conditions; blink/fade only while a separate (optional) condition is also met */
-    this._leds.forEach(({ e, ld, s: sz }) => {
-      const r = this._read(ld.entity || C.entity, ld.attribute || (ld.entity ? null : C.attribute));
-      let on = !!r.s && condMet(r.raw, ld);
-      if (ld.invert) on = !on;
-
-      const eff = ld.effect || (ld.blink ? "blink" : "none");     // `blink: true` from older configs still works
-      let fx = on && eff !== "none";
-      if (fx) {
-        // a condition without an entity reads the gauge entity
-        fx = evalConds(pgcEffectConds(ld), (cd) =>
-          cd.entity ? this._read(cd.entity, cd.attribute) : this._read(C.entity, cd.attribute || C.attribute));
-      }
-      const rate = Math.max(0.1, +(eff === "fade" ? (ld.fade_rate ?? 2) : (ld.blink_rate ?? 1)) || 1);
-
-      const base = (ld.use_threshold_color && thr) || ld.color || "#ff1744";
-      const c = parseColor(base, this);
+    /* LEDs: the first condition (top to bottom) that is met decides colors and behavior; none met = default color */
+    const readFn = (en, at) => this._read(en, at);
+    const kf = [];
+    this._leds.forEach(({ e, ld, s: sz }, idx) => {
+      const hit = ld._conds.find((cd) => pgcCondTrue(cd, readFn, C)) || null;
+      let beh = hit ? (hit.behavior || "on") : "off";
+      if ((beh === "blink" || beh === "fade") && hit.effect_conditions?.length &&
+          !evalConds(hit.effect_conditions, (cd) => cd.entity ? this._read(cd.entity, cd.attribute) : this._read(C.entity, cd.attribute || C.attribute))) beh = "on";
+      const first = ld._conds[0];
+      const onSrc = (hit && ((hit.use_threshold_color && thr) || hit.color)) || "#ff1744";
+      const c = parseColor(onSrc, this);
+      const offSrc = (hit && hasVal(hit.color_off)) ? hit.color_off : ld._def;
+      const off = hasVal(offSrc) ? parseColor(offSrc, this)
+        : mix(parseColor(hit ? onSrc : (first?.color || "#ff1744"), this), 0, 0.78);
       const ring = "0 0 0 .3cqw #8a8d92, 0 0 0 .5cqw #1b1b1b, 0 .2cqw .5cqw .5cqw rgba(0,0,0,.5)";
-      const off = ld.color_off ? parseColor(ld.color_off, this) : mix(c, 0, 0.78);
       // base = off look (always there); ::before = lit look (shown when on, animated by blink / fade)
       e.style.background = `radial-gradient(circle at 35% 30%, rgba(255,255,255,.28) 0%, ${rgba(off, 1)} 45%, rgba(0,0,0,1) 130%)`;
       e.style.setProperty("--ring", ring);
       e.style.setProperty("--on-bg", `radial-gradient(circle at 35% 30%, rgba(255,255,255,.95) 0%, ${rgba(mix(c, 255, 0.45), 1)} 22%, ${rgba(c, 1)} 55%, ${rgba(mix(c, 0, 0.5), 1)} 100%)`);
       e.style.setProperty("--on-glow", `0 0 ${sz * 0.9}cqw ${sz * 0.25}cqw ${rgba(c, 0.85)}`);
-      e.classList.toggle("lit", on);
-      e.style.setProperty("--r", rate + "s");
-      e.classList.toggle("blink", fx && eff === "blink");
-      e.classList.toggle("fade", fx && eff === "fade");
+      const fx = beh === "blink" || beh === "fade";
+      e.classList.toggle("lit", beh !== "off");
+      e.classList.toggle("fx", fx);
+      if (fx) {
+        const t = (v, d) => Math.max(0.05, +(hasVal(v) ? v : d) || d);
+        const a1 = t(beh === "blink" ? hit.blink_on : hit.fade_in, beh === "blink" ? 0.5 : 1);
+        const a2 = t(beh === "blink" ? hit.blink_off : hit.fade_out, beh === "blink" ? 0.5 : 1);
+        const p = Math.min(99.98, (a1 / (a1 + a2)) * 100).toFixed(3);
+        const name = `pgcled${idx}${beh}`;
+        kf.push(beh === "blink"
+          ? `@keyframes ${name}{0%,${p}%{opacity:1}${(+p + 0.01).toFixed(3)}%,100%{opacity:0}}`
+          : `@keyframes ${name}{0%{opacity:0}${p}%{opacity:1}100%{opacity:0}}`);
+        e.style.setProperty("--an", name);
+        e.style.setProperty("--r", (a1 + a2) + "s");
+        e.style.setProperty("--tf", beh === "blink" ? "linear" : "ease-in-out");
+      }
     });
+    const kfText = kf.join("");
+    if (this._fx && this._fxText !== kfText) { this._fxText = kfText; this._fx.textContent = kfText; }
 
     /* min / max markers */
     if (C.show_min_max && E.mmin) {
@@ -842,14 +899,29 @@ const num = (name, min, max, step = 1, slider = false, unit) =>
   ({ name, selector: { number: { min, max, step, mode: slider ? "slider" : "box", ...(unit ? { unit_of_measurement: unit } : {}) } } });
 const txt = (name) => ({ name, selector: { text: {} } });
 const bool = (name) => ({ name, selector: { boolean: {} } });
+/* `show(obj)` hides a field until it applies; the editor strips it before handing the schema to ha-form. */
+const showIf = (field, show) => ({ ...field, show });
+const ownEnt = (o) => !(o.use_gauge_entity ?? !hasVal(o.entity));          // "Use gauge entity" is un-checked
 const col = (name) => ({ name, selector: { color_rgb: {} } });        // native colour picker
 const ent = (name) => ({ name, selector: { entity: {} } });
 const act = (name) => ({ name, selector: { ui_action: {} } });
 const obj = (name) => ({ name, selector: { object: {} } });
 const sel = (name, options) => ({ name, selector: { select: { mode: "dropdown", options } } });
-const font = (name) => ({ name, selector: { select: { mode: "dropdown", custom_value: true,
+/* Font families named by font_urls (Google Fonts links) and custom_fonts, so they show up in the font dropdowns. */
+function pgcConfigFonts(cfg) {
+  const list = (v) => (Array.isArray(v) ? v : v ? [v] : []), out = [];
+  list(cfg.font_urls).forEach((u) => {
+    if (typeof u !== "string") return;
+    const m = u.match(/[?&]family=([^&]+)/g) || [];
+    m.forEach((q) => { const n = decodeURIComponent(q.replace(/^[?&]family=/, "").split(":")[0].replace(/\+/g, " ")).trim(); if (n) out.push(n); });
+  });
+  list(cfg.custom_fonts).forEach((f) => { if (f && typeof f.family === "string" && f.family) out.push(f.family); });
+  return [...new Set(out)];
+}
+const font = (name) => ({ name, fontOpts: true, selector: { select: { mode: "dropdown", custom_value: true,
   options: FONT_CHOICES.map((f) => ({ value: f, label: f.replace(/['"]/g, "").split(",")[0] })) } } });
 const grp = (title, schema) => ({ type: "expandable", title, schema });
+const section = (title) => ({ type: "section", title });
 const grid = (...schema) => ({ type: "grid", schema });
 const pct = (name) => num(name, 0, 100, 0.5, true, "%");
 const any = (name) => num(name, -100000, 100000, "any");
@@ -914,35 +986,32 @@ const LABEL_SCHEMA = [
   txt("text"), grid(pct("x"), pct("y")), grid(num("size", 1, 30, 0.25), num("rotate", -180, 180, 1)),
   col("color"), font("font"), sel("weight", [{ value: "normal", label: "Normal" }, { value: "bold", label: "Bold" }]),
   col("bg_color"), num("bg_opacity", 0, 1, 0.05, true), txt("bg_image"),
-  grid(num("padding", 0, 10, 0.1), num("radius", 0, 10, 0.1)), ent("entity"), txt("attribute"),
+  grid(num("padding", 0, 10, 0.1), num("radius", 0, 10, 0.1)),
+  bool("use_gauge_entity"), showIf(ent("entity"), ownEnt), txt("attribute"),
 ];
+/* LED: position, size and tooltip name on top, then the default color; conditions are built by _condPanel. */
 const LED_SCHEMA = [
-  grid(pct("x"), pct("y")), num("size", 1, 15, 0.25),
-  col("color"), col("color_off"), bool("use_threshold_color"), txt("label"),
-  grp("Lit when", [
-    ent("entity"), txt("attribute"),
-    grid(any("above"), any("below")), grid(txt("equals"), txt("not_equals")), bool("invert"),
-  ]),
-  grp("Blink or fade", [
-    sel("effect", [{ value: "none", label: "Steady" }, { value: "blink", label: "Blink" }, { value: "fade", label: "Fade" }]),
-    num("blink_rate", 0.1, 10, 0.1, false, "s"), num("fade_rate", 0.1, 10, 0.1, false, "s"),
-  ]),
+  grid(pct("x"), pct("y")), num("size", 1, 15, 0.25), txt("label"), col("default_color"),
 ];
-/* One blink/fade condition. Every condition after the first also gets the join selector. */
+/* One LED condition. The first condition that is met (top to bottom) decides what the LED shows. */
 const COND_SCHEMA = [
-  ent("entity"), txt("attribute"),
+  txt("name"),
+  bool("use_gauge_entity"), showIf(ent("entity"), ownEnt), txt("attribute"),
   grid(sel("operator", [
-    { value: "above", label: "Above (>)" }, { value: "below", label: "Below (<)" },
-    { value: "above_or_equal", label: "At least (≥)" }, { value: "below_or_equal", label: "At most (≤)" },
-    { value: "equals", label: "Equals (=)" }, { value: "not_equals", label: "Not equal (≠)" },
+    { value: "above", label: "Greater than (>)" }, { value: "below", label: "Less than (<)" },
+    { value: "above_or_equal", label: "Greater than or equal (≥)" }, { value: "below_or_equal", label: "Less than or equal (≤)" },
+    { value: "equals", label: "Equals (=)" }, { value: "not_equals", label: "Not equals (≠)" },
   ]), txt("value")),
+ section("Colors"),
+  bool("use_threshold_color"),
+  grid(showIf(col("color"), (o) => !o.use_threshold_color), col("color_off")),
+  section("Behavior"),
+  sel("behavior", [{ value: "off", label: "Off" }, { value: "on", label: "On" }, { value: "blink", label: "Blink" }, { value: "fade", label: "Fade" }]),
+  grid(showIf(num("blink_on", 0.05, 30, 0.05, false, "s"), (o) => o.behavior === "blink"), showIf(num("blink_off", 0.05, 30, 0.05, false, "s"), (o) => o.behavior === "blink")),
+  grid(showIf(num("fade_in", 0.05, 30, 0.05, false, "s"), (o) => o.behavior === "fade"), showIf(num("fade_out", 0.05, 30, 0.05, false, "s"), (o) => o.behavior === "fade")),
 ];
-const COND_JOIN_SCHEMA = sel("join", [
-  { value: "and", label: "AND - the previous condition must also be true" },
-  { value: "or", label: "OR - either this or the previous condition" },
-]);
 const DIGITAL_SCHEMA = [
-  ent("entity"), txt("attribute"), txt("unit"),
+  bool("use_gauge_entity"), showIf(ent("entity"), ownEnt), txt("attribute"), txt("unit"),
   grid(pct("x"), pct("y")), num("width", 5, 80, 0.5),
   font("font"), num("font_size", 1, 30, 0.25), col("color"), bool("glow"),
   col("bg_color"), num("bg_opacity", 0, 1, 0.05, true), txt("bg_image"),
@@ -952,19 +1021,23 @@ const DIGITAL_SCHEMA = [
 /* What the editor shows for a field that is not set yet (matches what the card does). */
 const THR_ITEM_DEFAULTS = { color: "#43a047" };
 const LABEL_ITEM_DEFAULTS = { x: 50, y: 50, size: 5, rotate: 0, weight: "normal", padding: 0.6, radius: 0.8, bg_opacity: 1, color: "#ffffff", bg_color: "#000000" };
-const LED_ITEM_DEFAULTS = {
-  x: 50, y: 85, size: 3, color: "#ff1744", color_off: "#3a0a10", use_threshold_color: false, invert: false,
-  effect: "none", blink_rate: 1, fade_rate: 2,
+const LED_DEFAULT_OFF = "#3a0a10";
+const LED_ITEM_DEFAULTS = { x: 50, y: 85, size: 3, default_color: LED_DEFAULT_OFF };
+const COND_ITEM_DEFAULTS = {
+  operator: "above", color: "#ff1744", behavior: "on", blink_on: 0.5, blink_off: 0.5, fade_in: 1, fade_out: 1,
 };
-const COND_ITEM_DEFAULTS = { operator: "equals", join: "and" };
-/* Older LED configs used `blink: true`; show it as effect: blink and drop the old key on the next edit. */
+/* Older LEDs (above/below/effect... keys) are shown as one condition and rewritten in the new form on the next edit. */
 const normLed = (it) => {
-  if (it.blink && !it.effect) { const { blink, ...rest } = it; return { ...rest, effect: "blink" }; }
-  return it;
+  if (Array.isArray(it.conditions)) return it;
+  const m = pgcLedModel(it), out = { ...it };
+  PGC_LED_LEGACY_KEYS.forEach((k) => delete out[k]);
+  if (hasVal(m.def)) out.default_color = m.def;
+  out.conditions = m.conds;
+  return out;
 };
 
 const PGC_REPEAT_KEYS = ["thresholds", "labels", "leds", "digitals"];
-const PGC_STRIP_EMPTY = ["thresholds", "labels", "leds"];         // an empty digitals list must stay (it means "none")
+const PGC_STRIP_EMPTY = ["thresholds", "labels"];         // an empty digitals list must stay (it means "none")
 
 /* ---- field labels: PGC_LABELS applies everywhere, PGC_LABELS_CTX overrides per group ---- */
 const PGC_LABELS = {
@@ -973,9 +1046,7 @@ const PGC_LABELS = {
   min_marker_value: "Min marker (fixed value)", max_marker_value: "Max marker (fixed value)",
   needle_animation_ms: "Needle animation (ms)", square_image: "Square image URL", circle_image: "Circle image URL",
   needle_image: "Needle image URL", hub_image: "Hub image URL", color_off: "Color when off",
-  no_data_text: "Text when no data", effect: "Effect while lit",
-  blink_rate: "Blink rate (seconds per cycle)", fade_rate: "Fade rate (seconds per cycle)",
-  operator: "Operator", join: "Join to previous condition with",
+  no_data_text: "Text when no data", use_gauge_entity: "Use gauge entity",
   border_color: "Ring color", border_thickness: "Ring thickness", border_image: "Ring image URL",
   border_metallic: "Metallic finish",
   border_outer_glow_color: "Outer glow color", border_outer_glow_intensity: "Outer glow intensity",
@@ -984,7 +1055,12 @@ const PGC_LABELS = {
 const PGC_LABELS_CTX = {
   thr: { from: "From", to: "To (optional)" },
   label: { size: "Font size", font: "Font" },
-  led: { size: "LED size", color: "Lit color", label: "Tooltip name" },
+  led: { size: "LED size", label: "Tooltip name", default_color: "Default color (no condition met)" },
+  cond: {
+    name: "Condition name", operator: "Operator", value: "Value", color: "On color", color_off: "Off color",
+    behavior: "LED behavior", blink_on: "Blink on time (seconds)", blink_off: "Blink off time (seconds)",
+    fade_in: "Fade in time (seconds)", fade_out: "Fade out time (seconds)", use_threshold_color: "Use threshold color",
+  },
   digital: { width: "Width", font_size: "Font size", color: "Digit color" },
 };
 
@@ -1092,37 +1168,36 @@ const PGC_HELP = {
     bg_image: "URL of an image used as the label's background.",
     padding: "Space between the text and the edge of its box.",
     radius: "Roundness of the box corners.",
-    entity: "Read {state} from this entity instead of the gauge entity.",
+    use_gauge_entity: "Tick (the default) to read {state} from the gauge entity. Un-tick to choose a different entity.",
+    entity: "The entity {state} is read from while Use gauge entity is un-ticked.",
     attribute: "Read {state} from this attribute instead of the state.",
   },
   led: {
     x: "Horizontal position as a percentage of the card width. 0 is the left edge, 50 the centre and 100 the right edge.",
     y: "Vertical position as a percentage of the card height. 0 is the top, 50 the centre and 100 the bottom.",
     size: "Diameter of the LED as a percentage of the card width.",
-    color: "Color of the LED when it is lit.",
-    color_off: "Color of the LED when it is off. If empty, a dark version of the lit color is used.",
-    use_threshold_color: "When on, the lit LED takes the color of the current threshold instead of the lit color.",
     label: "Optional name shown as a tooltip when you hover over the LED.",
-    entity: "Entity the Lit when conditions check. Leave empty to use the gauge entity.",
-    attribute: "Attribute to check instead of the state.",
-    above: "The LED is lit when the value is above this number.",
-    below: "The LED is lit when the value is below this number.",
-    equals: "The LED is lit when the state equals this. Works for text states such as on or charging.",
-    not_equals: "The LED is lit when the state differs from this.",
-    invert: "Flips the result, so the LED is lit when the conditions are not met.",
-    effect: "Steady stays lit. Blink switches between the lit color and the off color. Fade smoothly changes between the lit color and the off color. The effect only runs while the LED is lit and the Blink / fade conditions are met.",
-    blink_rate: "Seconds for one full cycle between the lit color and the off color. Lower numbers blink faster.",
-    fade_rate: "Seconds for one full fade from the lit color to the off color and back. Lower numbers fade faster.",
+    default_color: "Color of the LED when none of its conditions is met. It is also the starting Off color for every condition.",
   },
   cond: {
-    entity: "Entity to check. Leave empty to use the gauge entity.",
+    name: "A name for this condition so you can tell them apart, for example Charging or Low battery.",
+    use_gauge_entity: "Tick (the default) to check the gauge entity. Un-tick to check a different entity.",
+    entity: "The entity this condition checks while Use gauge entity is un-ticked.",
     attribute: "Attribute to check instead of the state.",
-    operator: "How to compare: above, below, at least, at most, equals or not equal.",
-    value: "The value to compare with. Numbers are compared as numbers, anything else as text.",
-    join: "How this condition combines with the one before it. AND needs both to be true, OR needs either. AND is checked before OR.",
+    operator: "How to compare: greater than, less than, greater than or equal, less than or equal, equals or not equals.",
+    value: "The value to compare with. Numbers are compared as numbers, anything else as text. Leave it empty and the condition is always met, which makes a good last 'otherwise' condition.",
+    use_threshold_color: "When on, the On color is taken from the gauge threshold the value is currently in.",
+    color: "Color of the LED while this condition is met and its behavior is On, Blink or Fade.",
+    color_off: "Color the LED shows for the off part of a Blink or Fade, or when the behavior is Off. If empty, the LED's Default color is used.",
+    behavior: "What the LED does while this is the first condition that is met. Off shows the Off color. On shows the On color steadily. Blink switches between the On and Off colors. Fade eases between them.",
+    blink_on: "Seconds the On color is shown in each blink.",
+    blink_off: "Seconds the Off color is shown in each blink.",
+    fade_in: "Seconds to fade from the Off color to the On color.",
+    fade_out: "Seconds to fade from the On color back to the Off color.",
   },
   digital: {
-    entity: "Entity this display shows. Leave empty to show the gauge entity.",
+    use_gauge_entity: "Tick (the default) to show the gauge entity. Un-tick to show a different entity.",
+    entity: "The entity this display shows while Use gauge entity is un-ticked.",
     attribute: "Attribute to show instead of the state.",
     unit: "Unit shown after the number. If empty, the entity's own unit is used.",
     x: "Horizontal position as a percentage of the card width. 0 is the left edge, 50 the centre and 100 the right edge.",
@@ -1176,9 +1251,11 @@ class PhotorealGaugeCardEditor extends HTMLElement {
   _ctx({ id, help, defaults, getObj, setObj }) {
     const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     const empty = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
-    const ctx = { id, help, defaults };
+    const ctx = { id, help, defaults, vis: [], getObj };
+    ctx.refresh = () => ctx.vis.forEach((x) => { x.el.hidden = !x.show(getObj() || {}); });
     ctx.get = (f) => {
       const o = getObj() || {}, v = o[f.name];
+      if (f.name === "use_gauge_entity") return v ?? !hasVal(o.entity);
       if (f.selector.color_rgb) return this._pick(hasVal(v) ? v : defaults[f.name] ?? "#000000");
       let out = empty(v) ? defaults[f.name] : v;
       if (PGC_ACTION_KEYS.includes(f.name)) out = normAction(out, PGC_DEFAULTS[f.name]);
@@ -1186,7 +1263,10 @@ class PhotorealGaugeCardEditor extends HTMLElement {
     };
     ctx.set = (f, v) => {
       const name = f.name, base = getObj() || {}, o = { ...base }, cur = ctx.get(f);
-      if (f.selector.color_rgb) {
+      if (name === "use_gauge_entity") {
+        if (v === cur) return;
+        if (v && !hasVal(o.entity)) delete o.use_gauge_entity; else o.use_gauge_entity = !!v;
+      } else if (f.selector.color_rgb) {
         if (!Array.isArray(v) || same(v.slice(0, 3), cur)) return;     // untouched
         o[name] = this._hex(v);
       } else {
@@ -1197,6 +1277,8 @@ class PhotorealGaugeCardEditor extends HTMLElement {
         if (PGC_ACTION_KEYS.includes(name) && same(o[name], PGC_DEFAULTS[name])) delete o[name];
       }
       setObj(o);
+      ctx.refresh();
+      ctx.onChange?.();
     };
     return ctx;
   }
@@ -1218,7 +1300,13 @@ class PhotorealGaugeCardEditor extends HTMLElement {
     const form = document.createElement("ha-form");
     const cur = ctx.get(f);
     form.computeLabel = () => label;
-    form.hass = this._hass; form.schema = [f]; form.data = cur === undefined ? {} : { [f.name]: cur };
+    const { show, fontOpts, ...fs } = f;
+    if (fontOpts) {
+      const known = new Set(fs.selector.select.options.flatMap((o) => [o.value, o.label]));
+      const extra = pgcConfigFonts(this._config).filter((n) => !known.has(n)).map((n) => ({ value: n, label: n }));
+      fs.selector = { select: { ...fs.selector.select, options: [...extra, ...fs.selector.select.options] } };
+    }
+    form.hass = this._hass; form.schema = [fs]; form.data = cur === undefined ? {} : { [f.name]: cur };
     form.addEventListener("value-changed", (ev) => {
       ev.stopPropagation();
       form.data = ev.detail.value;                 // ha-form is controlled: keep its data current
@@ -1242,6 +1330,7 @@ class PhotorealGaugeCardEditor extends HTMLElement {
     });
     row.appendChild(btn);
     wrap.appendChild(box);
+    if (show) { ctx.vis.push({ el: wrap, show }); wrap.hidden = !show(ctx.getObj?.() || {}); }
     return wrap;
   }
 
@@ -1263,7 +1352,9 @@ class PhotorealGaugeCardEditor extends HTMLElement {
 
   _renderSchema(schema, ctx, parent) {
     schema.forEach((item) => {
-      if (item.type === "expandable") parent.appendChild(this._group(item, ctx));
+      if (item.type === "section") {
+        const h = document.createElement("div"); h.className = "pgc-section"; h.textContent = item.title; parent.appendChild(h);
+      } else if (item.type === "expandable") parent.appendChild(this._group(item, ctx));
       else if (item.type === "grid") {
         const g = document.createElement("div"); g.className = "pgc-grid";
         this._renderSchema(item.schema, ctx, g);
@@ -1306,9 +1397,21 @@ class PhotorealGaugeCardEditor extends HTMLElement {
         color:var(--primary-text-color);font-size:13px;line-height:1.45}
       .pgc-help[hidden]{display:none}
       .pgc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0 8px}
+      .pgc-section{margin:14px 4px 2px;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--secondary-text-color)}
+      .pgc-field[hidden]{display:none}
       .pgc-note{color:var(--secondary-text-color);font-size:12px;margin:0 0 8px}
-      .pgc-cond{border:1px solid var(--divider-color);border-radius:8px;padding:8px;margin:8px 0}
-      .pgc-chead{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+      .pgc-cond{border:1px solid var(--divider-color);border-radius:12px;margin:8px 0;overflow:hidden}
+      .pgc-cond.open{border-color:var(--primary-color)}.pgc-cond.drag{opacity:.5}
+      .pgc-chead{display:flex;align-items:center;gap:6px;padding:8px;cursor:pointer}
+      .pgc-grip{display:inline-flex;cursor:grab;color:var(--secondary-text-color);--mdc-icon-size:20px}
+      .pgc-ord{flex:none;width:24px;height:24px;border-radius:50%;background:var(--secondary-background-color);font-size:13px;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+      .pgc-ctext{flex:1;min-width:0}.pgc-cname{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .pgc-csum{font-size:12px;color:var(--secondary-text-color);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .pgc-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 10px;border-radius:12px;background:var(--secondary-background-color)}
+      .pgc-dot{width:11px;height:11px;border-radius:50%;border:1px solid var(--divider-color)}
+      .pgc-ib{flex:none;width:32px;height:32px;padding:0;border:none;border-radius:50%;background:transparent;cursor:pointer;color:var(--primary-text-color);display:inline-flex;align-items:center;justify-content:center;--mdc-icon-size:20px}
+      .pgc-ib:hover:not(:disabled){background:var(--secondary-background-color)}.pgc-ib:disabled{opacity:.3;cursor:default}
+      .pgc-cbody{padding:0 10px 10px;border-top:1px solid var(--divider-color)}.pgc-cbody[hidden]{display:none}
       .pgc-dialog{padding:0;border:none;border-radius:12px;width:min(920px,94vw);height:min(86vh,900px);max-width:94vw;max-height:94vh;
         background:var(--card-background-color,#fff);color:var(--primary-text-color,#212121);box-shadow:0 12px 40px rgba(0,0,0,.45);overflow:hidden}
       .pgc-dialog[open]{display:flex;flex-direction:column}
@@ -1376,7 +1479,7 @@ class PhotorealGaugeCardEditor extends HTMLElement {
       key: "leds", title: "LED indicators", noun: "LED", help: "led", schema: LED_SCHEMA,
       itemDefaults: LED_ITEM_DEFAULTS, norm: normLed,
       extra: (inner, i, acc) => this._condPanel(inner, i, acc),
-      makeNew: () => ({ x: 50, y: 85, color: "#ff1744" }),
+      makeNew: () => ({ x: 50, y: 85, conditions: [] }),
       describe: (it) => it.label || `at ${it.x ?? 50}, ${it.y ?? 85}`,
     }));
   }
@@ -1458,71 +1561,137 @@ class PhotorealGaugeCardEditor extends HTMLElement {
     return panel;
   }
 
-  /* LED "Blink / fade conditions": a dropdown holding a list of conditions joined by AND / OR */
+  /* LED conditions: named, re-orderable, first one met wins. Each has its own entity, colors and behavior. */
   _condPanel(inner, i, acc) {
-    const id = `leds:${i}:cond`;
-    const panel = document.createElement("ha-expansion-panel");
-    panel.outlined = true; panel.header = "Blink / fade conditions"; panel.expanded = this._open.has(id);
-    panel.addEventListener("expanded-changed", (ev) => {
-      if (ev.target !== panel) return;
-      ev.stopPropagation();
-      if (ev.detail?.expanded ?? panel.expanded) this._open.add(id); else this._open.delete(id);
-    });
-    const body = document.createElement("div"); body.className = "pad"; panel.appendChild(body);
-
-    const list = () => pgcEffectConds(acc.get()).map((c) => ({ ...c }));
-    const write = (arr) => {
-      const it = { ...acc.get() };
-      PGC_EFFECT_LEGACY_KEYS.forEach((k) => delete it[k]);          // older flat keys are replaced by the list
-      if (arr.length) it.effect_conditions = arr; else delete it.effect_conditions;
-      acc.set(it);
+    const base = `leds:${i}:c`;
+    const wrap = document.createElement("div"); wrap.className = "pgc-conds";
+    inner.appendChild(wrap);
+    const OPS = { above: ">", below: "<", above_or_equal: "≥", below_or_equal: "≤", equals: "=", not_equals: "≠" };
+    const BEH = { off: "Off", on: "On", blink: "Blink", fade: "Fade" };
+    const list = () => (acc.get().conditions || []).map((c) => ({ ...c }));
+    const write = (arr) => { acc.set({ ...acc.get(), conditions: arr }); };
+    const summary = (cd) => {
+      const who = ownEnt(cd) && cd.entity ? cd.entity : "gauge entity";
+      if (cd.operator && hasVal(cd.value)) return `${who} ${OPS[cd.operator] || "="} ${cd.value}`;
+      return cd.operator ? `${who} - always met (no value)` : who;
     };
-    const button = (label, danger) => {
-      const b = document.createElement("ha-button");
-      b.textContent = label;
-      if (danger) { b.setAttribute("variant", "danger"); b.setAttribute("appearance", "plain"); }
+    const iconBtn = (icon, label, fn, dim) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "pgc-ib"; b.title = label;
+      b.setAttribute("aria-label", label); b.disabled = !!dim;
+      const ic = document.createElement("ha-icon"); ic.setAttribute("icon", icon); b.appendChild(ic);
+      b.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
       return b;
+    };
+    const swapOpen = (a, b) => {
+      const ka = `${base}${a}`, kb = `${base}${b}`, oa = this._open.has(ka), ob = this._open.has(kb);
+      this._open.delete(ka); this._open.delete(kb);
+      if (oa) this._open.add(kb); if (ob) this._open.add(ka);
+    };
+    const move = (from, to) => {
+      const arr = list(); if (to < 0 || to >= arr.length || from === to) return;
+      const open = arr.map((_, k) => this._open.has(`${base}${k}`));
+      const [x] = arr.splice(from, 1); arr.splice(to, 0, x);
+      const [o] = open.splice(from, 1); open.splice(to, 0, o);
+      open.forEach((v, k) => (v ? this._open.add(`${base}${k}`) : this._open.delete(`${base}${k}`)));
+      write(arr); render();
     };
 
     const render = () => {
-      body.innerHTML = "";
+      wrap.innerHTML = "";
+      const h = document.createElement("div"); h.className = "pgc-section"; h.textContent = "Conditions"; wrap.appendChild(h);
       const note = document.createElement("p"); note.className = "pgc-note";
-      note.textContent = "The LED blinks or fades only while these conditions are true. With none, it always does while lit. " +
-        "A condition with no entity uses the gauge entity. AND is checked before OR.";
-      body.appendChild(note);
+      note.textContent = "The LED follows the first condition that is met, from top to bottom. Use the arrows (or drag the handle) to re-order. " +
+        "If no condition is met, the LED shows its default color.";
+      wrap.appendChild(note);
 
-      list().forEach((cd, ci) => {
+      const conds = list();
+      conds.forEach((cd, ci) => {
+        const id = `${base}${ci}`;
         const box = document.createElement("div"); box.className = "pgc-cond";
         const head = document.createElement("div"); head.className = "pgc-chead";
-        const title = document.createElement("strong"); title.textContent = `Condition ${ci + 1}`;
-        const rm = button("Remove condition", true);
-        rm.addEventListener("click", () => {
-          const arr = list(); arr.splice(ci, 1);
-          if (arr[0]) delete arr[0].join;
-          write(arr); render();
-        });
-        head.append(title, rm); box.appendChild(head);
+        const grip = document.createElement("span"); grip.className = "pgc-grip"; grip.title = "Drag to re-order";
+        const gi = document.createElement("ha-icon"); gi.setAttribute("icon", "mdi:drag"); grip.appendChild(gi);
+        const num = document.createElement("span"); num.className = "pgc-ord"; num.textContent = String(ci + 1);
+        const txt = document.createElement("div"); txt.className = "pgc-ctext";
+        const nm = document.createElement("div"); nm.className = "pgc-cname";
+        const sm = document.createElement("div"); sm.className = "pgc-csum";
+        txt.append(nm, sm);
+        const chip = document.createElement("span"); chip.className = "pgc-chip";
+        const dot = document.createElement("span"); dot.className = "pgc-dot";
+        const chipTx = document.createElement("span"); chip.append(dot, chipTx);
+        const refreshHead = () => {
+          const c = list()[ci] || {};
+          nm.textContent = c.name || `Condition ${ci + 1}`;
+          sm.textContent = summary(c);
+          chipTx.textContent = BEH[c.behavior || "on"];
+          dot.style.background = c.use_threshold_color ? "conic-gradient(#43a047,#fdd835,#e53935,#43a047)"
+            : (Array.isArray(c.color) ? `rgb(${c.color.slice(0, 3)})` : c.color || COND_ITEM_DEFAULTS.color);
+        };
+        refreshHead();
+        const body = document.createElement("div"); body.className = "pgc-cbody";
+        const chev = iconBtn("mdi:chevron-down", "Show or hide this condition", () => toggle());
+        const up = iconBtn("mdi:arrow-up", "Move up", () => move(ci, ci - 1), ci === 0);
+        const down = iconBtn("mdi:arrow-down", "Move down", () => move(ci, ci + 1), ci === conds.length - 1);
+        head.append(grip, num, txt, chip, up, down, chev);
+        box.append(head, body);
 
-        const cctx = this._ctx({
-          id: `${id}:${ci}`, help: "cond", defaults: COND_ITEM_DEFAULTS,
-          getObj: () => list()[ci] || {},
-          setObj: (o) => { const arr = list(); if (!ci) delete o.join; arr[ci] = o; write(arr); },
+        let built = false;
+        const build = () => {
+          if (built) return; built = true;
+          const d = { ...COND_ITEM_DEFAULTS };
+          Object.defineProperty(d, "color_off", { enumerable: true, get: () => acc.get().default_color ?? LED_DEFAULT_OFF });
+          const cctx = this._ctx({
+            id, help: "cond", defaults: d,
+            getObj: () => list()[ci] || {},
+            setObj: (o) => { const arr = list(); arr[ci] = o; write(arr); },
+          });
+          cctx.onChange = refreshHead;
+          this._renderSchema(COND_SCHEMA, cctx, body);
+          const row = document.createElement("div"); row.className = "row";
+          const del = document.createElement("ha-button");
+          del.textContent = "Remove condition"; del.setAttribute("variant", "danger"); del.setAttribute("appearance", "plain");
+          del.addEventListener("click", () => {
+            const arr = list(); arr.splice(ci, 1);
+            [...this._open].filter((o) => o.startsWith(base)).forEach((o) => this._open.delete(o));
+            write(arr); render();
+          });
+          row.appendChild(del); body.appendChild(row);
+        };
+        const toggle = () => {
+          const open = body.hidden;
+          body.hidden = !open; box.classList.toggle("open", open);
+          chev.querySelector("ha-icon").setAttribute("icon", open ? "mdi:chevron-up" : "mdi:chevron-down");
+          if (open) { this._open.add(id); build(); } else this._open.delete(id);
+        };
+        body.hidden = true;
+        if (this._open.has(id)) toggle();
+        head.addEventListener("click", (e) => { if (!e.target.closest("button,.pgc-grip")) toggle(); });
+
+        /* drag and drop by the handle */
+        grip.addEventListener("mousedown", () => { box.draggable = true; });
+        const stopDrag = () => { box.draggable = false; box.classList.remove("drag"); };
+        box.addEventListener("dragstart", (e) => { e.dataTransfer?.setData("text/plain", String(ci)); this._dragFrom = ci; box.classList.add("drag"); });
+        box.addEventListener("dragend", stopDrag);
+        box.addEventListener("dragover", (e) => { if (this._dragFrom !== undefined) e.preventDefault(); });
+        box.addEventListener("drop", (e) => {
+          e.preventDefault();
+          const from = this._dragFrom; this._dragFrom = undefined;
+          if (from !== undefined) move(from, ci);
         });
-        this._renderSchema(ci ? [COND_JOIN_SCHEMA, ...COND_SCHEMA] : COND_SCHEMA, cctx, box);
-        body.appendChild(box);
+        wrap.appendChild(box);
       });
 
-      const add = button("Add condition");
+      const add = document.createElement("ha-button");
+      add.textContent = "Add condition";
       add.addEventListener("click", () => {
         const arr = list();
-        arr.push(arr.length ? { join: "and", operator: "below" } : { operator: "below" });
-        this._open.add(id);
+        arr.push({ name: `Condition ${arr.length + 1}`, operator: "above", behavior: "on" });
+        this._open.add(`${base}${arr.length - 1}`);
         write(arr); render();
       });
-      const row = document.createElement("div"); row.className = "row"; row.appendChild(add); body.appendChild(row);
+      const r = document.createElement("div"); r.className = "row"; r.appendChild(add); wrap.appendChild(r);
     };
     render();
-    inner.appendChild(panel);
   }
 
   /* ---- help dialog: shows README.md (kept next to this file) ---- */

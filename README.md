@@ -1,6 +1,6 @@
 # Photoreal Gauge Card
 
-Version 1.4.2
+Version 1.5.0
 
 ![A photo-realistic gauge on a carbon graphite panel](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/hero.png)
 
@@ -15,7 +15,8 @@ Photoreal Gauge Card is a custom Lovelace card for Home Assistant that draws a r
 - [Positions and sizes](#positions-and-sizes)
 - [All options](#all-options)
 - [Text label tokens](#text-label-tokens)
-- [LED blink and fade conditions](#led-blink-and-fade-conditions)
+- [LED conditions](#led-conditions)
+- [Use gauge entity](#use-gauge-entity)
 - [Examples with pictures](#examples-with-pictures)
 - [Fonts](#fonts)
 - [Backgrounds and images](#backgrounds-and-images)
@@ -101,7 +102,11 @@ digitals:
 labels:
 - {text: '{name}', x: 50, y: 30, size: 5.5, color: '#cfd8dc'}
 leds:
-- {x: 50, y: 88, color: '#43a047', size: 3}
+- x: 50
+  y: 88
+  size: 3
+  conditions:
+  - {name: OK, color: '#43a047', behavior: 'on'}
 gauge_margin: 7
 ```
 
@@ -362,7 +367,8 @@ Each label (Add label):
 | Background image URL | `bg_image` | URL of an image used as the label's background. | empty |
 | Padding | `padding` | Space between the text and the edge of its box. | `0.6` |
 | Radius | `radius` | Roundness of the box corners. | `0.8` |
-| Entity | `entity` | Read {state} from this entity instead of the gauge entity. | empty |
+| Use gauge entity | `use_gauge_entity` | Tick (the default) to read {state} from the gauge entity. Un-tick to choose a different entity. | on |
+| Entity | `entity` | The entity {state} is read from while Use gauge entity is un-ticked. | empty |
 | Attribute | `attribute` | Read {state} from this attribute instead of the state. | empty |
 
 ### Digital displays
@@ -371,7 +377,8 @@ Each display (Add display). You can add as many as you like, each with its own e
 
 | Option | YAML key | What it does | Default |
 |---|---|---|---|
-| Entity | `entity` | Entity this display shows. Leave empty to show the gauge entity. | empty |
+| Use gauge entity | `use_gauge_entity` | Tick (the default) to show the gauge entity. Un-tick to show a different entity. | on |
+| Entity | `entity` | The entity this display shows while Use gauge entity is un-ticked. | empty |
 | Attribute | `attribute` | Attribute to show instead of the state. | empty |
 | Unit | `unit` | Unit shown after the number. If empty, the entity's own unit is used. | empty |
 | X position | `x` | Horizontal position as a percentage of the card width. 0 is the left edge, 50 the centre and 100 the right edge. | `50` |
@@ -392,31 +399,19 @@ Each display (Add display). You can add as many as you like, each with its own e
 
 ### LED indicators
 
-Each LED (Add LED):
+Each LED (Add LED). Position, size and tooltip name come first, then a **Default color**, then the LED's conditions (see [LED conditions](#led-conditions)):
 
 | Option | YAML key | What it does | Default |
 |---|---|---|---|
 | X position | `x` | Horizontal position as a percentage of the card width. 0 is the left edge, 50 the centre and 100 the right edge. | `50` |
 | Y position | `y` | Vertical position as a percentage of the card height. 0 is the top, 50 the centre and 100 the bottom. | `85` |
 | LED size | `size` | Diameter of the LED as a percentage of the card width. | `3` |
-| Lit color | `color` | Color of the LED when it is lit. | `#ff1744` |
-| Color when off | `color_off` | Color of the LED when it is off. If empty, a dark version of the lit color is used. | `#3a0a10` |
-| Use threshold color | `use_threshold_color` | When on, the lit LED takes the color of the current threshold instead of the lit color. | off |
 | Tooltip name | `label` | Optional name shown as a tooltip when you hover over the LED. | empty |
-| Entity | `entity` | Entity the Lit when conditions check. Leave empty to use the gauge entity. | empty |
-| Attribute | `attribute` | Attribute to check instead of the state. | empty |
-| Above | `above` | The LED is lit when the value is above this number. | empty |
-| Below | `below` | The LED is lit when the value is below this number. | empty |
-| Equals | `equals` | The LED is lit when the state equals this. Works for text states such as on or charging. | empty |
-| Not equals | `not_equals` | The LED is lit when the state differs from this. | empty |
-| Invert | `invert` | Flips the result, so the LED is lit when the conditions are not met. | off |
-| Effect while lit | `effect` | Steady stays lit. Blink switches between the lit color and the off color. Fade smoothly changes between the lit color and the off color. The effect only runs while the LED is lit and the Blink / fade conditions are met. | `none` |
-| Blink rate (seconds per cycle) | `blink_rate` | Seconds for one full cycle between the lit color and the off color. Lower numbers blink faster. | `1` |
-| Fade rate (seconds per cycle) | `fade_rate` | Seconds for one full fade from the lit color to the off color and back. Lower numbers fade faster. | `2` |
+| Default color (no condition met) | `default_color` | Color of the LED when none of its conditions is met. It is also the starting Off color for every condition. | `#3a0a10` |
 
 ![LED examples](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/leds.png)
 
-An LED is **lit** when all of its "Lit when" conditions are true (above, below, equals, not equal). If you set none, it is always lit. **Lit when - Invert** flips the result.
+A new LED has no conditions yet, so it shows its default color. Click **Add condition** to make it react.
 
 ## Text label tokens
 
@@ -431,34 +426,70 @@ Inside a label's text you can use these tokens. They are replaced with live data
 
 Example: `text: "{name}: {value} {unit}"` shows `Battery: 72 %`.
 
-## LED blink and fade conditions
+## LED conditions
 
-An LED can blink or fade, but only while a set of conditions is true. This lets an LED stay steady in one situation and animate in another.
+Every LED has an ordered list of **conditions**. Each condition has its own name, entity, test, colors and behavior. The LED follows **the first condition that is met**, reading from top to bottom, so overlapping conditions never fight. If no condition is met, the LED shows its **Default color**.
 
-In the LED's **Blink / fade conditions** group, click **Add condition**. Each condition has an entity (empty means the gauge entity), an optional attribute, an operator and a value. After the first condition, each one is joined to the previous with **AND** or **OR**. AND is evaluated before OR. Conditions without a value are ignored. With no conditions, the effect always runs while the LED is lit.
+Click **Add condition** inside an LED. Give each condition a name (for example *Charging* or *Low battery*). Re-order with the up and down arrows, or drag the handle at the left of the condition. Put the most specific condition first.
 
-Operators: Above (>), Below (<), At least (>=), At most (<=), Equals, Not equal.
+| Option | YAML key | What it does | Default |
+|---|---|---|---|
+| Condition name | `name` | A name for this condition so you can tell them apart, for example Charging or Low battery. | empty |
+| Use gauge entity | `use_gauge_entity` | Tick (the default) to check the gauge entity. Un-tick to check a different entity. | on |
+| Entity | `entity` | The entity this condition checks while Use gauge entity is un-ticked. | empty |
+| Attribute | `attribute` | Attribute to check instead of the state. | empty |
+| Operator | `operator` | How to compare: greater than, less than, greater than or equal, less than or equal, equals or not equals. | `above` |
+| Value | `value` | The value to compare with. Numbers are compared as numbers, anything else as text. Leave it empty and the condition is always met, which makes a good last 'otherwise' condition. | empty |
+| Use threshold color | `use_threshold_color` | When on, the On color is taken from the gauge threshold the value is currently in. | empty |
+| On color | `color` | Color of the LED while this condition is met and its behavior is On, Blink or Fade. | `#ff1744` |
+| Off color | `color_off` | Color the LED shows for the off part of a Blink or Fade, or when the behavior is Off. If empty, the LED's Default color is used. | the LED's default color |
+| LED behavior | `behavior` | What the LED does while this is the first condition that is met. Off shows the Off color. On shows the On color steadily. Blink switches between the On and Off colors. Fade eases between them. | `on` |
+| Blink on time (seconds) | `blink_on` | Seconds the On color is shown in each blink. | `0.5` |
+| Blink off time (seconds) | `blink_off` | Seconds the Off color is shown in each blink. | `0.5` |
+| Fade in time (seconds) | `fade_in` | Seconds to fade from the Off color to the On color. | `1` |
+| Fade out time (seconds) | `fade_out` | Seconds to fade from the On color back to the Off color. | `1` |
 
-**Example: charging indicator.** The LED is lit while the battery is charging, fades while the level is below 100, and stays steady once it reaches 100:
+Operators: Greater than (>), Less than (<), Greater than or equal (>=), Less than or equal (<=), Equals, Not equals. A condition with no value is always met, which makes it a good last "otherwise" condition. If the entity is unavailable, the condition is not met.
+
+**LED behavior**
+
+| Behavior | What the LED shows while the condition is met |
+|---|---|
+| Off | The Off color. The search stops here, so conditions below are not checked. |
+| On | The On color, steady |
+| Blink | The On color for the blink on time, then the Off color for the blink off time, repeating |
+| Fade | Fades from the Off color to the On color over the fade in time, then back over the fade out time, repeating |
+
+Blink and fade times are shown only when that behavior is selected. Each has separate on and off (or in and out) times, so a quick flash and a slow fade out are possible. If you enable Reduce Motion on your device, blinking and fading are switched off and the On color stays steady.
+
+![LEDs: steady, blink and fade](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/led-effects.gif)
+
+**Example: battery indicator.** Steady green when full, a slow green fade while charging, a fast red blink when low. Because the first met condition wins, a charging battery that is also low shows the fade:
 
 ```yaml
 leds:
 - x: 50
   y: 88
-  color: '#43a047'
-  entity: binary_sensor.battery_charging
-  equals: 'on'
-  effect: fade
-  fade_rate: 2
-  effect_conditions:
-  - {entity: sensor.battery_level, operator: below, value: '100'}
+  size: 3
+  label: Battery state
+  default_color: '#2b2b2b'
+  conditions:
+  - {name: Full, operator: above_or_equal, value: 100, color: '#43a047', behavior: 'on'}
+  - {name: Charging, use_gauge_entity: false, entity: binary_sensor.battery_charging, operator: equals,
+    value: 'on', color: '#43a047', color_off: '#0f2a14', behavior: fade, fade_in: 2, fade_out: 1}
+  - {name: Low battery, operator: below, value: 20, color: '#ff1744', color_off: '#3a0a10', behavior: blink,
+    blink_on: 0.3, blink_off: 0.7}
 ```
 
-Blinking and fading cycle between the LED's lit color and its **Color when off**, so the LED always stays visible.
+### Upgrading from older versions
 
-![LEDs: steady, blink and fade](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/led-effects.gif)
+LEDs written with the older keys (`above`, `below`, `equals`, `invert`, `effect`, `blink_rate`, ...) still work. When you edit such an LED in the visual editor, it is shown as one condition named *Lit* and saved in the new form.
 
-Other settings: **Effect while lit** (Steady, Blink or Fade), **Blink rate** and **Fade rate** (seconds per cycle). If you enable Reduce Motion on your device, blinking and fading are switched off.
+## Use gauge entity
+
+Digital displays, text labels and LED conditions each have a **Use gauge entity** check box, **on by default**. While it is checked the item uses the gauge's own entity and no entity needs to be chosen. Un-check it to pick a different entity for that item. The **Attribute** field works either way. Items from older configs that already name an entity open with the box un-checked.
+
+In YAML: `use_gauge_entity: false` together with `entity: sensor.other`. The min and max marker entities are not affected: when empty they use the values the gauge has recorded.
 
 ## Examples with pictures
 
@@ -565,6 +596,7 @@ Leave a margin around the gauge (**Gauge margin** 6 to 9) so the corner screws s
 
 | Version | Changes |
 |---|---|
+| 1.5.0 | **Use gauge entity** check box on digital displays, text labels and LED conditions. LED indicators reworked: named, re-orderable conditions (first met wins), each with its own entity, On/Off colors or threshold color, behavior (Off, On, Blink, Fade) and separate blink on/off and fade in/out times. New LED default color. Operators now read Greater than / Less than. Older LED settings still work. Fonts added under Font urls or Custom fonts now appear in the font dropdowns, and a single URL is accepted for Font urls. |
 | 1.4.2 | LED blink and fade now cycle between the lit color and the off color instead of fading the whole LED out |
 | 1.4.1 | Guide renamed from help.md to README.md, HACS install instructions and `/hacsfiles/` paths |
 | 1.4.0 | Info icon on every editor field, Help button with this guide, "Border" group renamed "Gauge outer ring", included example pictures |

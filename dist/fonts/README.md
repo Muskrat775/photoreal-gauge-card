@@ -4,22 +4,22 @@
 
 ## Use
 
-Add one line to the card (or to your Lovelace resources):
+The card loads `fonts.css` by default (since v1.6.1), so all 24 families already appear in the editor's font dropdowns. Just pick or type a family name (for example `Orbitron`) in any font field: numbers, labels or digital displays.
+
+If you set your own `font_urls` list, it replaces the default. Keep this line in it to keep the bundled fonts:
 
 ```yaml
 font_urls:
   - /hacsfiles/photoreal-gauge-card/fonts/fonts.css
 ```
 
-Manual install: copy the `dist` contents to `/config/www/photoreal-gauge-card/` and use `/local/photoreal-gauge-card/fonts/fonts.css`. Once that URL is in **Font urls**, all 24 families appear in the editor's font dropdowns.
-
-Then type the family name (for example `Orbitron`) in any font field: numbers, labels or digital displays.
+Manual install: copy the `dist` contents to `/config/www/photoreal-gauge-card/`. The card finds `fonts/fonts.css` next to its own file; if you list it yourself use `/local/photoreal-gauge-card/fonts/fonts.css`.
 
 ## Theme pairings
 
 | Theme | Numbers | Labels | Digital display |
 |---|---|---|---|
-| Stargate style: stone, glyphs, bronze crystal needle | Cinzel | Cinzel Decorative | Quantico |
+| Ancient stone: runes, amber gems, bronze crystal needle | Cinzel | Cinzel Decorative | Quantico |
 | Chrome and white enamel | Saira Condensed | Oswald | Rajdhani |
 | Radar green on smoked glass | Share Tech Mono | Share Tech Mono | VT323 |
 | Carbon fiber and red racing | Orbitron | Oxanium | Orbitron |

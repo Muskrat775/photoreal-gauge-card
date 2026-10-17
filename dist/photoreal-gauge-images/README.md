@@ -1,6 +1,6 @@
 # Photoreal Gauge image pack
 
-60 images for the Photoreal Gauge Card: 10 options for each of the 6 places the card accepts a picture. They cover metal, brushed metal, plastic, glass, an ancient-stone set, and some fun extras (wood, brass steampunk, radar, lava, sci-fi panels, leather).
+62 images for the Photoreal Gauge Card: 10 options for each of the 6 places the card accepts a picture, plus two extra dial faces. They cover metal, brushed metal, plastic, glass, an ancient-stone set, and some fun extras (wood, brass steampunk, radar, lava, sci-fi panels, leather).
 
 ![Example gauges built only from this pack](_previews/Example_gauges.jpg)
 
@@ -35,7 +35,7 @@ The glowing needle tip is **off by default**. Turn on **Needle tip glow** in the
 
 **Square_backgrounds**: 01 polished steel, 02 brushed aluminum, 03 black anodized, 04 carbon fiber, 05 matte black plastic, 06 smoked glass, 07 ancient stone with rune border, 08 brass steampunk, 09 walnut wood, 10 sci-fi bulkhead.
 
-**Dial_faces**: 01 white enamel, 02 matte black, 03 turned silver, 04 carbon fiber, 05 blue glass, 06 vintage cream, 07 ancient stone disc, 08 brass sunburst, 09 radar green, 10 lava cracks.
+**Dial_faces**: 01 white enamel, 02 matte black, 03 turned silver, 04 carbon fiber, 05 blue glass, 06 vintage cream, 07 ancient stone disc, 08 brass sunburst, 09 radar green, 10 lava cracks, 11 iris diaphragm (overlapping steel blades that spiral into the center, a good match for white numbers), 12 energy pool (glowing blue ripples around a bright core, use light numbers).
 
 **Outer_rings**: 01 chrome, 02 brushed steel, 03 gold, 04 copper with patina, 05 black knurled plastic, 06 blue glass, 07 ancient stone ring with seven amber gems, 08 knurled steel, 09 riveted brass, 10 red neon anodized.
 

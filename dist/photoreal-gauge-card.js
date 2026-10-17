@@ -30,7 +30,7 @@ const PGC_DEFAULTS = {
   square_color: "var(--ha-card-background, var(--card-background-color, #1c1c1c))",
   square_color_opacity: 1, square_image: "", square_image_opacity: 1, square_radius: 4,
   circle_color: "#1b1f24", circle_color_opacity: 1,
-  circle_image: "", circle_image_opacity: 1,
+  circle_image: "", circle_image_opacity: 1, circle_conditions: [],
   face_shading: true, glass: true, glass_intensity: 40, shadow: true,
   // border
   border_color: "#b9bdc4", border_thickness: 5, border_image: "", border_metallic: true,
@@ -310,6 +310,7 @@ class PhotorealGaugeCard extends HTMLElement {
       const m = pgcLedModel(normColors(t, ["color", "color_off", "default_color"]));
       return { ...t, _def: m.def, _conds: m.conds.map((cd) => normColors(cd, ["color", "color_off"])) };
     });
+    c.circle_conditions = (Array.isArray(c.circle_conditions) ? c.circle_conditions : []).filter((x) => x && typeof x === "object").map((t) => normColors(t, ["color"]));
     c.digitals = pgcDigitalList(config).map((t) => normColors({ ...PGC_DIGITAL_DEFAULTS, ...t }, ["color", "bg_color"]));
     // font_urls / custom_fonts: accept a single value (a bare URL line in the editor) as well as a list
     ["font_urls", "custom_fonts"].forEach((k) => { c[k] = Array.isArray(c[k]) ? c[k] : (c[k] && typeof c[k] !== "number") ? [c[k]] : []; });
@@ -319,6 +320,7 @@ class PhotorealGaugeCard extends HTMLElement {
     this._ents = [c.entity, c.min_marker_entity, c.max_marker_entity,
       ...c.labels.map(pgcEnt),
       ...c.leds.flatMap((l) => l._conds.flatMap((cd) => [pgcEnt(cd), ...(cd.effect_conditions || []).map((x) => x.entity)])),
+      ...c.circle_conditions.map(pgcEnt),
       ...c.digitals.map(pgcEnt)].filter(Boolean);
     this._ready = false;
     this._mm = null;
@@ -613,6 +615,7 @@ class PhotorealGaugeCard extends HTMLElement {
     const fi = m + t + "%";
     S($(".face"), { inset: fi });
     S($(".cbg"), { background: C.circle_color, opacity: C.circle_color_opacity });
+    this._cimg = $(".cimg"); this._cbg = $(".cbg"); this._cbgKey = null;
     S($(".cimg"), {
       opacity: C.circle_image_opacity, backgroundImage: C.circle_image ? `url("${C.circle_image}")` : "none",
       backgroundSize: "cover", backgroundPosition: "center",
@@ -746,6 +749,20 @@ class PhotorealGaugeCard extends HTMLElement {
         .replace(/\{unit\}/g, unit)
         .replace(/\{name\}/g, name);
     });
+
+    /* circle background: the first condition (top to bottom) that is met replaces the default image and/or color */
+    if (this._cimg && this._cbg) {
+      const cr = (en, at) => this._read(en, at);
+      const hit = (C.circle_conditions || []).find((cd) => pgcCondTrue(cd, cr, C)) || null;
+      const img = hit && hasVal(hit.image) ? hit.image : C.circle_image;
+      const clr = hit && hasVal(hit.color) ? hit.color : C.circle_color;
+      const key = img + "|" + clr;
+      if (key !== this._cbgKey) {
+        this._cbgKey = key;
+        this._cimg.style.backgroundImage = img ? `url("${img}")` : "none";
+        this._cbg.style.background = clr;
+      }
+    }
 
     /* LEDs: the first condition (top to bottom) that is met decides colors and behavior; none met = default color */
     const readFn = (en, at) => this._read(en, at);
@@ -1024,6 +1041,18 @@ const COND_SCHEMA = [
   grid(showIf(num("blink_on", 0.05, 30, 0.05, false, "s"), (o) => o.behavior === "blink"), showIf(num("blink_off", 0.05, 30, 0.05, false, "s"), (o) => o.behavior === "blink")),
   grid(showIf(num("fade_in", 0.05, 30, 0.05, false, "s"), (o) => o.behavior === "fade"), showIf(num("fade_out", 0.05, 30, 0.05, false, "s"), (o) => o.behavior === "fade")),
 ];
+/* One circle background condition: the first one met (top to bottom) replaces the default circle image and/or color. */
+const CCOND_SCHEMA = [
+  txt("name"),
+  bool("use_gauge_entity"), showIf(ent("entity"), ownEnt), txt("attribute"),
+  grid(sel("operator", [
+    { value: "above", label: "Greater than (>)" }, { value: "below", label: "Less than (<)" },
+    { value: "above_or_equal", label: "Greater than or equal (≥)" }, { value: "below_or_equal", label: "Less than or equal (≤)" },
+    { value: "equals", label: "Equals (=)" }, { value: "not_equals", label: "Not equals (≠)" },
+  ]), txt("value")),
+  section("Circle background"),
+  txt("image"), col("color"),
+];
 const DIGITAL_SCHEMA = [
   bool("use_gauge_entity"), showIf(ent("entity"), ownEnt), txt("attribute"), txt("unit"),
   grid(pct("x"), pct("y")), num("width", 5, 80, 0.5),
@@ -1037,6 +1066,7 @@ const THR_ITEM_DEFAULTS = { color: "#43a047" };
 const LABEL_ITEM_DEFAULTS = { x: 50, y: 50, size: 5, rotate: 0, weight: "normal", padding: 0.6, radius: 0.8, bg_opacity: 1, color: "#ffffff", bg_color: "#000000" };
 const LED_DEFAULT_OFF = "#3a0a10";
 const LED_ITEM_DEFAULTS = { x: 50, y: 85, size: 3, default_color: LED_DEFAULT_OFF };
+const CCOND_ITEM_DEFAULTS = { operator: "above", color: "#1b1f24" };
 const COND_ITEM_DEFAULTS = {
   operator: "above", color: "#ff1744", behavior: "on", blink_on: 0.5, blink_off: 0.5, fade_in: 1, fade_out: 1,
 };
@@ -1051,7 +1081,7 @@ const normLed = (it) => {
 };
 
 const PGC_REPEAT_KEYS = ["thresholds", "labels", "leds", "digitals"];
-const PGC_STRIP_EMPTY = ["thresholds", "labels"];         // an empty digitals list must stay (it means "none")
+const PGC_STRIP_EMPTY = ["thresholds", "labels", "circle_conditions"];         // an empty digitals list must stay (it means "none")
 
 /* ---- field labels: PGC_LABELS applies everywhere, PGC_LABELS_CTX overrides per group ---- */
 const PGC_LABELS = {
@@ -1070,6 +1100,7 @@ const PGC_LABELS_CTX = {
   thr: { from: "From", to: "To (optional)" },
   label: { size: "Font size", font: "Font" },
   led: { size: "LED size", label: "Tooltip name", default_color: "Default color (no condition met)" },
+  ccond: { name: "Condition name", operator: "Operator", value: "Value", image: "Circle image URL", color: "Circle color" },
   cond: {
     name: "Condition name", operator: "Operator", value: "Value", color: "On color", color_off: "Off color",
     behavior: "LED behavior", blink_on: "Blink on time (seconds)", blink_off: "Blink off time (seconds)",
@@ -1101,7 +1132,8 @@ const PGC_HELP = {
     square_image_opacity: "Opacity of the square background image. Lower it to let the fill color show through.",
     circle_color: "Fill color of the round dial face inside the outer ring.",
     circle_color_opacity: "Opacity of the dial face color. Lower it to let the square background show through the dial.",
-    circle_image: "URL of an image for the dial face, such as brushed metal or a printed dial. It is cropped to the circle.",
+    circle_image: "URL of an image for the dial face, such as brushed metal or a printed dial. It is cropped to the circle. This is the default; add Circle background conditions to change it.",
+    circle_conditions: "List of conditions that change the circle background. The first condition that is met replaces the default image and/or color. Use the Circle background conditions group.",
     circle_image_opacity: "Opacity of the dial face image.",
     face_shading: "Adds a soft shaded gradient to the dial face, lighter in the middle and darker at the edge, for depth.",
     shadow: "Draws a drop shadow under the outer ring so the gauge looks raised above the background.",
@@ -1192,6 +1224,16 @@ const PGC_HELP = {
     size: "Diameter of the LED as a percentage of the card width.",
     label: "Optional name shown as a tooltip when you hover over the LED.",
     default_color: "Color of the LED when none of its conditions is met. It is also the starting Off color for every condition.",
+  },
+  ccond: {
+    name: "A name for this condition so you can tell them apart, for example Low battery or Charging.",
+    use_gauge_entity: "Tick (the default) to test the gauge entity. Un-tick to test a different entity.",
+    entity: "The entity this condition checks while Use gauge entity is un-ticked.",
+    attribute: "Attribute to test instead of the state.",
+    operator: "How the entity's value is compared with Value. Numbers are compared as numbers.",
+    value: "The value to compare with. Leave it empty and the condition is always met, which makes a good last catch-all.",
+    image: "URL of the circle image shown while this is the first condition that is met. If empty, the default Circle image URL is used.",
+    color: "Circle background color shown while this condition is met. Only used if you change it from the default.",
   },
   cond: {
     name: "A name for this condition so you can tell them apart, for example Charging or Low battery.",
@@ -1470,6 +1512,7 @@ class PhotorealGaugeCardEditor extends HTMLElement {
 
     /* repeatable lists */
     const sec = document.createElement("div"); sec.className = "sec"; this.appendChild(sec);
+    sec.appendChild(this._circlePanel());
     sec.appendChild(this._repeater({
       key: "thresholds", title: "Thresholds", noun: "Threshold", help: "thr", schema: THR_SCHEMA,
       itemDefaults: THR_ITEM_DEFAULTS,
@@ -1575,9 +1618,38 @@ class PhotorealGaugeCardEditor extends HTMLElement {
     return panel;
   }
 
+  /* Circle background conditions: shown under the Backgrounds group; first condition met wins, none met = default circle image/color. */
+  _circlePanel() {
+    const panel = document.createElement("ha-expansion-panel");
+    panel.outlined = true; panel.header = "Circle background conditions"; panel.expanded = this._open.has("circle_conditions");
+    panel.addEventListener("expanded-changed", (ev) => {
+      if (ev.target !== panel) return;
+      ev.stopPropagation();
+      if (ev.detail?.expanded ?? panel.expanded) this._open.add("circle_conditions"); else this._open.delete("circle_conditions");
+    });
+    const body = document.createElement("div"); body.className = "pad"; panel.appendChild(body);
+    const acc = {
+      get: () => ({ conditions: Array.isArray(this._config.circle_conditions) ? this._config.circle_conditions : [] }),
+      set: (obj) => { this._setItems("circle_conditions", obj.conditions || []); this._emit(); },
+    };
+    this._condPanel(body, 0, acc, {
+      base: "ccond:c", schema: CCOND_SCHEMA, help: "ccond", itemDefaults: CCOND_ITEM_DEFAULTS,
+      note: "The circle shows its default Circle image URL and Circle color (set in Backgrounds) until a condition is met. " +
+        "The first condition that is met, from top to bottom, replaces the image and/or color. Use the arrows (or drag the handle) to re-order.",
+      summary: (cd, OPS) => {
+        const who = ownEnt(cd) && cd.entity ? cd.entity : "gauge entity";
+        return cd.operator && hasVal(cd.value) ? `${who} ${OPS[cd.operator] || "="} ${cd.value}` : `${who} - always met (no value)`;
+      },
+      chip: (c) => ({ text: c.image ? String(c.image).split("/").pop().replace(/\.[a-z0-9]+$/i, "") : (c.color ? "Color" : "No change"),
+        color: c.color ? (Array.isArray(c.color) ? `rgb(${c.color.slice(0, 3)})` : c.color) : "var(--divider-color)" }),
+      makeNew: (arr) => ({ name: `Condition ${arr.length + 1}`, operator: "above" }),
+    });
+    return panel;
+  }
+
   /* LED conditions: named, re-orderable, first one met wins. Each has its own entity, colors and behavior. */
-  _condPanel(inner, i, acc) {
-    const base = `leds:${i}:c`;
+  _condPanel(inner, i, acc, o = {}) {
+    const base = o.base || `leds:${i}:c`;
     const wrap = document.createElement("div"); wrap.className = "pgc-conds";
     inner.appendChild(wrap);
     const OPS = { above: ">", below: "<", above_or_equal: "≥", below_or_equal: "≤", equals: "=", not_equals: "≠" };
@@ -1585,6 +1657,7 @@ class PhotorealGaugeCardEditor extends HTMLElement {
     const list = () => (acc.get().conditions || []).map((c) => ({ ...c }));
     const write = (arr) => { acc.set({ ...acc.get(), conditions: arr }); };
     const summary = (cd) => {
+      if (o.summary) return o.summary(cd, OPS);
       const who = ownEnt(cd) && cd.entity ? cd.entity : "gauge entity";
       if (cd.operator && hasVal(cd.value)) return `${who} ${OPS[cd.operator] || "="} ${cd.value}`;
       return cd.operator ? `${who} - always met (no value)` : who;
@@ -1614,8 +1687,8 @@ class PhotorealGaugeCardEditor extends HTMLElement {
       wrap.innerHTML = "";
       const h = document.createElement("div"); h.className = "pgc-section"; h.textContent = "Conditions"; wrap.appendChild(h);
       const note = document.createElement("p"); note.className = "pgc-note";
-      note.textContent = "The LED follows the first condition that is met, from top to bottom. Use the arrows (or drag the handle) to re-order. " +
-        "If no condition is met, the LED shows its default color.";
+      note.textContent = o.note || ("The LED follows the first condition that is met, from top to bottom. Use the arrows (or drag the handle) to re-order. " +
+        "If no condition is met, the LED shows its default color.");
       wrap.appendChild(note);
 
       const conds = list();
@@ -1637,6 +1710,7 @@ class PhotorealGaugeCardEditor extends HTMLElement {
           const c = list()[ci] || {};
           nm.textContent = c.name || `Condition ${ci + 1}`;
           sm.textContent = summary(c);
+          if (o.chip) { const ch = o.chip(c); chipTx.textContent = ch.text; dot.style.background = ch.color; return; }
           chipTx.textContent = BEH[c.behavior || "on"];
           dot.style.background = c.use_threshold_color ? "conic-gradient(#43a047,#fdd835,#e53935,#43a047)"
             : (Array.isArray(c.color) ? `rgb(${c.color.slice(0, 3)})` : c.color || COND_ITEM_DEFAULTS.color);
@@ -1652,15 +1726,15 @@ class PhotorealGaugeCardEditor extends HTMLElement {
         let built = false;
         const build = () => {
           if (built) return; built = true;
-          const d = { ...COND_ITEM_DEFAULTS };
-          Object.defineProperty(d, "color_off", { enumerable: true, get: () => acc.get().default_color ?? LED_DEFAULT_OFF });
+          const d = { ...(o.itemDefaults || COND_ITEM_DEFAULTS) };
+          if (!o.itemDefaults) Object.defineProperty(d, "color_off", { enumerable: true, get: () => acc.get().default_color ?? LED_DEFAULT_OFF });
           const cctx = this._ctx({
-            id, help: "cond", defaults: d,
+            id, help: o.help || "cond", defaults: d,
             getObj: () => list()[ci] || {},
             setObj: (o) => { const arr = list(); arr[ci] = o; write(arr); },
           });
           cctx.onChange = refreshHead;
-          this._renderSchema(COND_SCHEMA, cctx, body);
+          this._renderSchema(o.schema || COND_SCHEMA, cctx, body);
           const row = document.createElement("div"); row.className = "row";
           const del = document.createElement("ha-button");
           del.textContent = "Remove condition"; del.setAttribute("variant", "danger"); del.setAttribute("appearance", "plain");
@@ -1699,7 +1773,7 @@ class PhotorealGaugeCardEditor extends HTMLElement {
       add.textContent = "Add condition";
       add.addEventListener("click", () => {
         const arr = list();
-        arr.push({ name: `Condition ${arr.length + 1}`, operator: "above", behavior: "on" });
+        arr.push(o.makeNew ? o.makeNew(arr) : { name: `Condition ${arr.length + 1}`, operator: "above", behavior: "on" });
         this._open.add(`${base}${arr.length - 1}`);
         write(arr); render();
       });

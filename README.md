@@ -21,6 +21,7 @@ Photoreal Gauge Card is a custom Lovelace card for Home Assistant that draws a r
 - [Ready-made themes](#ready-made-themes)
 - [Fonts](#fonts)
 - [Backgrounds and images](#backgrounds-and-images)
+- [Circle background conditions](#circle-background-conditions)
 - [Troubleshooting](#troubleshooting)
 - [Version history](#version-history)
 
@@ -51,7 +52,7 @@ You need access to the `/config` folder (File editor, Studio Code Server, Samba,
     photoreal-gauge-card.js
     README.md
     images/                  (pictures used by this guide)
-    photoreal-gauge-images/  (60 ready-made backgrounds, dials, rings, needles, hubs, label plates)
+    photoreal-gauge-images/  (62 ready-made backgrounds, dials, rings, needles, hubs, label plates)
     fonts/                   (24 ready-made fonts and fonts.css)
 ```
 
@@ -212,7 +213,7 @@ hold_action: {action: more-info}
 | Square image opacity | `square_image_opacity` | Opacity of the square background image. Lower it to let the fill color show through. | `1` |
 | Circle color | `circle_color` | Fill color of the round dial face inside the outer ring. | `#1b1f24` |
 | Circle color opacity | `circle_color_opacity` | Opacity of the dial face color. Lower it to let the square background show through the dial. | `1` |
-| Circle image URL | `circle_image` | URL of an image for the dial face, such as brushed metal or a printed dial. It is cropped to the circle. | empty |
+| Circle image URL | `circle_image` | URL of an image for the dial face, such as brushed metal or a printed dial. It is cropped to the circle. This is the default; add Circle background conditions to change it. | empty |
 | Circle image opacity | `circle_image_opacity` | Opacity of the dial face image. | `1` |
 | Face shading | `face_shading` | Adds a soft shaded gradient to the dial face, lighter in the middle and darker at the edge, for depth. | on |
 | Shadow | `shadow` | Draws a drop shadow under the outer ring so the gauge looks raised above the background. | on |
@@ -787,7 +788,7 @@ Then enter `DSEG7` as the font of a digital display.
 
 ## Backgrounds and images
 
-Any image URL field accepts a path under `/local/` (files in `/config/www/`) or a full `https://` address. The card ships with 60 ready-made pictures in `photoreal-gauge-images`, 10 for each place a picture can go:
+Any image URL field accepts a path under `/local/` (files in `/config/www/`) or a full `https://` address. The card ships with 62 ready-made pictures in `photoreal-gauge-images`, 10 for each place a picture can go (plus two extra dial faces):
 
 | Folder | Card field | Size |
 |---|---|---|
@@ -799,6 +800,29 @@ Any image URL field accepts a path under `/local/` (files in `/config/www/`) or 
 | `Label_and_display_backgrounds` | `bg_image` of a label or digital display | 768 x 288 JPG |
 
 `photoreal-gauge-images/README.md` lists every picture, and `_previews` has a contact sheet per folder. The three original dark backgrounds are in `Square_backgrounds` (`carbon-graphite-screws.jpg`, `dark-brushed-metal-screws.jpg`, `dark-brushed-metal.jpg`). Leave a margin around the gauge (**Gauge margin** 6 to 9) so the corner screws stay visible.
+
+### Circle background conditions
+
+The circle (dial face) can change with a state. Set the normal look with **Circle image URL** and **Circle color** under Backgrounds, then open **Circle background conditions** in the editor and click **Add condition**. Each condition has a name, an entity (the gauge entity unless you un-tick **Use gauge entity**), an operator and value, and the **Circle image URL** and/or **Circle color** to show while it is met. The first condition that is met, from top to bottom, wins. If none is met, the default circle shows. A condition with no value is always met, so it works as a last catch-all. Use the arrows or drag the handle to re-order.
+
+This example shows the iris dial normally, an energy pool above 80, and lava cracks below 15:
+
+```yaml
+circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/11-iris-diaphragm.jpg
+circle_conditions:
+- {name: High, operator: above, value: 80, image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/12-energy-pool.jpg}
+- {name: Low, operator: below, value: 15, image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/10-lava-cracks.jpg}
+```
+
+A condition can watch another entity:
+
+```yaml
+circle_conditions:
+- {name: Charging, use_gauge_entity: false, entity: binary_sensor.charging, operator: equals, value: 'on',
+  image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/12-energy-pool.jpg}
+```
+
+The image or color changes at once (there is no fade). A condition that sets only an image keeps the default color, and one that sets only a color keeps the default image. The image is drawn on top of the color, so a color-only condition is only visible if the default image is transparent or semi-transparent (see **Circle image opacity**).
 
 ## Troubleshooting
 
@@ -817,7 +841,7 @@ Any image URL field accepts a path under `/local/` (files in `/config/www/`) or 
 
 | Version | Changes |
 |---|---|
-| 1.6.2 | New original **ancient stone** ring (seven amber gems, rune cells) with matching renamed stone images and an `Ancient_stone` theme, replacing the earlier stone-ring images and theme. |
+| 1.6.2 | New original **ancient stone** ring (seven amber gems, rune cells) with matching renamed stone images and an `Ancient_stone` theme, replacing the earlier stone-ring images and theme. **Circle background conditions**: a default circle image/color plus an ordered list of conditions that swap them (`circle_conditions`). |
 | 1.6.1 | The bundled fonts (`fonts/fonts.css`) are now loaded by default, so the 24 shipped fonts are available without any configuration. A custom **Font urls** list replaces the default. Custom fonts accepts a plain font file address; the family name is the file name. |
 | 1.6.0 | **Bundled picture pack** (`photoreal-gauge-images`, 60 images in six folders) and **bundled fonts** (`fonts`, 24 families). Custom fonts also accepts a plain font file address. Six ready-made themes. **Needle tip glow is now off by default** (turn it on with `needle_tip_glow: true`). The three starter backgrounds moved to `photoreal-gauge-images/Square_backgrounds` and `sample-needle.png` to `photoreal-gauge-images/Needles`; update old `/backgrounds/` and `/images/sample-needle.png` paths. |
 | 1.5.0 | **Use gauge entity** check box on digital displays, text labels and LED conditions. LED indicators reworked: named, re-orderable conditions (first met wins), each with its own entity, On/Off colors or threshold color, behavior (Off, On, Blink, Fade) and separate blink on/off and fade in/out times. New LED default color. Operators now read Greater than / Less than. Older LED settings still work. Fonts added under Font urls or Custom fonts now appear in the font dropdowns, and a single URL is accepted for Font urls. |

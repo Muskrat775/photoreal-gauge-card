@@ -1,10 +1,10 @@
 # Photoreal Gauge image pack
 
-60 images for the Photoreal Gauge Card: 10 options for each of the 6 places the card accepts a picture. They cover metal, brushed metal, plastic, glass, a Stargate-style set, and some fun extras (wood, brass steampunk, radar, lava, sci-fi panels, leather).
+60 images for the Photoreal Gauge Card: 10 options for each of the 6 places the card accepts a picture. They cover metal, brushed metal, plastic, glass, a Stone-Glyph-style set, and some fun extras (wood, brass steampunk, radar, lava, sci-fi panels, leather).
 
 ![Example gauges built only from this pack](_previews/Example_gauges.jpg)
 
-All images were generated procedurally (lighting, texture and bevel rendering done in code), so they are original artwork you can use freely. The Stargate-style set is an original homage: its glyphs are invented constellation-style symbols and it is not affiliated with or taken from the TV series.
+All images were generated procedurally (lighting, texture and bevel rendering done in code), so they are original artwork you can use freely. The Stone-Glyph-style set is an original homage: its glyphs are invented constellation-style symbols and it is not affiliated with or taken from any TV series.
 
 ## Install
 
@@ -32,17 +32,17 @@ The glowing needle tip is **off by default**. Turn on **Needle tip glow** in the
 
 ## The options
 
-**Square_backgrounds**: also the three original starter backgrounds (`carbon-graphite-screws`, `dark-brushed-metal-screws`, `dark-brushed-metal`). New: 01 polished steel, 02 brushed aluminum, 03 black anodized, 04 carbon fiber, 05 matte black plastic, 06 smoked glass, 07 Stargate stone with glyph border, 08 brass steampunk, 09 walnut wood, 10 sci-fi bulkhead.
+**Square_backgrounds**: also the three original starter backgrounds (`carbon-graphite-screws`, `dark-brushed-metal-screws`, `dark-brushed-metal`). New: 01 polished steel, 02 brushed aluminum, 03 black anodized, 04 carbon fiber, 05 matte black plastic, 06 smoked glass, 07 stone with glyph border, 08 brass steampunk, 09 walnut wood, 10 sci-fi bulkhead.
 
-**Dial_faces**: 01 white enamel, 02 matte black, 03 turned silver, 04 carbon fiber, 05 blue glass, 06 vintage cream, 07 Stargate stone disc, 08 brass sunburst, 09 radar green, 10 lava cracks.
+**Dial_faces**: 01 white enamel, 02 matte black, 03 turned silver, 04 carbon fiber, 05 blue glass, 06 vintage cream, 07 stone disc, 08 brass sunburst, 09 radar green, 10 lava cracks.
 
-**Outer_rings**: 01 chrome, 02 brushed steel, 03 gold, 04 copper with patina, 05 black knurled plastic, 06 blue glass, 07 Stargate chevron ring, 08 knurled steel, 09 riveted brass, 10 red neon anodized.
+**Outer_rings**: 01 chrome, 02 brushed steel, 03 gold, 04 copper with patina, 05 black knurled plastic, 06 blue glass, 07 stone ring, 08 knurled steel, 09 riveted brass, 10 red neon anodized.
 
-**Needles**: also `sample-needle.png`. New: 01 chrome pointer, 02 red plastic, 03 brass spear, 04 carbon with red tip, 05 blue glass, 06 orange arrow, 07 Stargate bronze with crystal tip, 08 white ceramic, 09 neon green line, 10 steel sword.
+**Needles**: also `sample-needle.png`. New: 01 chrome pointer, 02 red plastic, 03 brass spear, 04 carbon with red tip, 05 blue glass, 06 orange arrow, 07 bronze with crystal tip, 08 white ceramic, 09 neon green line, 10 steel sword.
 
-**Hubs**: 01 chrome dome, 02 brass dome, 03 black plastic dome, 04 glass dome, 05 knurled steel cap, 06 slotted screw head, 07 Stargate crystal core, 08 carbon fiber dome, 09 ruby jewel, 10 wood and brass.
+**Hubs**: 01 chrome dome, 02 brass dome, 03 black plastic dome, 04 glass dome, 05 knurled steel cap, 06 slotted screw head, 07 crystal core, 08 carbon fiber dome, 09 ruby jewel, 10 wood and brass.
 
-**Label_and_display_backgrounds**: 01 brushed steel plate, 02 black plastic, 03 frosted glass, 04 green LCD, 05 amber display, 06 brass plate, 07 Stargate stone glyphs, 08 carbon fiber, 09 stitched leather, 10 sci-fi blue panel.
+**Label_and_display_backgrounds**: 01 brushed steel plate, 02 black plastic, 03 frosted glass, 04 green LCD, 05 amber display, 06 brass plate, 07 stone glyphs, 08 carbon fiber, 09 stitched leather, 10 sci-fi blue panel.
 
 ## Tips
 
@@ -56,9 +56,9 @@ The glowing needle tip is **off by default**. Turn on **Needle tip glow** in the
 
 Each theme combines pictures from this pack with a matching font from the `fonts` folder (see `fonts/README.md`). Paste into the card's YAML editor and change `entity`. The `font_urls` line loads the bundled fonts.
 
-### Stargate style: stone, glyphs, bronze crystal needle
+### Stone Glyph style: stone, glyphs, bronze crystal needle
 
-![Stargate](_previews/Theme_Stargate.jpg)
+![Stone Glyph](_previews/Theme_Stone Glyph.jpg)
 
 ```yaml
 type: custom:photoreal-gauge-card

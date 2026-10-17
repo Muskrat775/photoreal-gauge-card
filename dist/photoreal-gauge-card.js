@@ -1,11 +1,22 @@
 /*!
- * photoreal-gauge-card  v1.6.0
+ * photoreal-gauge-card  v1.6.2
  * Photo-realistic analog gauge card for Home Assistant (Lovelace)
  *
  * Coordinates for labels / LEDs / digital displays: X and Y are PERCENT of the
  * square card (0-100). 50,50 is the gauge centre. Sizes are % of card width.
  */
-const PGC_VERSION = "1.6.0";
+const PGC_VERSION = "1.6.2";
+/* The font pack shipped next to this file (/hacsfiles/photoreal-gauge-card/fonts/fonts.css with HACS). It is the default for font_urls. */
+const PGC_FONTS_CSS = new URL("fonts/fonts.css", import.meta.url).href;
+
+/* custom_fonts item: {family, url, weight} or just a font file URL (family is taken from the file name, e.g. .../Cinzel/Cinzel.woff -> Cinzel) */
+function pgcCustomFont(f) {
+  const bare = typeof f === "string";
+  if (bare) f = { url: f };
+  if (!f || typeof f.url !== "string" || !f.url) return null;
+  const family = f.family || decodeURIComponent(f.url.split(/[?#]/)[0].split("/").pop()).replace(/\.[a-z0-9]+$/i, "").replace(/[-_ ]?(Regular|Variable)$/i, "").trim();
+  return family ? { family, url: f.url, weight: f.weight || (bare ? "100 900" : "normal") } : null;
+}
 
 const PGC_DEFAULTS = {
   // value
@@ -49,7 +60,7 @@ const PGC_DEFAULTS = {
   // hub
   hub_size: 7, hub_color: "#c9ccd1", hub_image: "", hub_opacity: 1,
   // extras
-  labels: [], leds: [], font_urls: [], custom_fonts: [],
+  labels: [], leds: [], font_urls: [PGC_FONTS_CSS], custom_fonts: [],
 };
 
 /* Defaults for each entry in `digitals`. */
@@ -384,8 +395,9 @@ class PhotorealGaugeCard extends HTMLElement {
       const l = document.createElement("link");
       l.rel = "stylesheet"; l.href = href; document.head.appendChild(l);
     });
-    (this._c.custom_fonts || []).forEach((f) => {
-      if (!f || !f.family || !f.url) return;
+    (this._c.custom_fonts || []).forEach((raw) => {
+      const f = pgcCustomFont(raw);
+      if (!f) return;
       const key = f.family + f.url;
       if (_pgcLoaded.has(key)) return;
       _pgcLoaded.add(key);
@@ -911,13 +923,13 @@ const sel = (name, options) => ({ name, selector: { select: { mode: "dropdown", 
 const PGC_BUNDLED_FONTS = ["Orbitron", "Share Tech Mono", "Cinzel", "Cinzel Decorative", "Rajdhani", "Oswald", "Saira Condensed", "Quantico", "Oxanium", "Chakra Petch", "Exo 2", "IM Fell English SC", "Rye", "Bungee", "Bungee Shade", "Black Ops One", "Wallpoet", "Audiowide", "Michroma", "Electrolize", "Iceland", "VT323", "Major Mono Display", "Jacquard 24"];
 function pgcConfigFonts(cfg) {
   const list = (v) => (Array.isArray(v) ? v : v ? [v] : []), out = [];
-  list(cfg.font_urls).forEach((u) => {
+  list(cfg.font_urls === undefined ? PGC_FONTS_CSS : cfg.font_urls).forEach((u) => {
     if (typeof u !== "string") return;
     if (/photoreal-gauge-card\/fonts\/fonts\.css|\/fonts\/fonts\.css(\?|$)/.test(u)) out.push(...PGC_BUNDLED_FONTS);  // the bundled font pack
     const m = u.match(/[?&]family=([^&]+)/g) || [];
     m.forEach((q) => { const n = decodeURIComponent(q.replace(/^[?&]family=/, "").split(":")[0].replace(/\+/g, " ")).trim(); if (n) out.push(n); });
   });
-  list(cfg.custom_fonts).forEach((f) => { if (f && typeof f.family === "string" && f.family) out.push(f.family); });
+  list(cfg.custom_fonts).forEach((f) => { const c = pgcCustomFont(f); if (c) out.push(c.family); });
   return [...new Set(out)];
 }
 const font = (name) => ({ name, fontOpts: true, selector: { select: { mode: "dropdown", custom_value: true,
@@ -1144,8 +1156,8 @@ const PGC_HELP = {
     hub_color: "Color of the hub. Shading is added automatically for a domed metal look.",
     hub_image: "URL of an image for the hub, for example a brushed-metal cap. It is cropped to a circle.",
     hub_opacity: "Opacity of the hub.",
-    font_urls: "List of stylesheet URLs to load, such as a Google Fonts link. Example: - https://fonts.googleapis.com/css2?family=Orbitron&display=swap. To use the 24 fonts that come with the card, add: - /hacsfiles/photoreal-gauge-card/fonts/fonts.css",
-    custom_fonts: "List of self-hosted fonts. Each item needs family and url, for example family: DSEG7 and url: /local/fonts/DSEG7.woff2.",
+    font_urls: "List of stylesheet URLs to load, such as a Google Fonts link. Example: - https://fonts.googleapis.com/css2?family=Orbitron&display=swap. The 24 fonts that come with the card (/hacsfiles/photoreal-gauge-card/fonts/fonts.css) are loaded by default. Setting this list replaces that default, so keep that line in the list if you still want them, or set an empty list to load none",
+    custom_fonts: "List of self-hosted fonts. Each item is a font file address, for example - /hacsfiles/photoreal-gauge-card/fonts/Cinzel/Cinzel.woff (the family name is the file name, Cinzel). To choose the family name yourself use family: DSEG7 and url: /local/fonts/DSEG7.woff2.",
     threshold_position: "Place the colored arcs outside the tick marks or inside them.",
     threshold_width: "Thickness of the colored arcs as a percentage of the dial radius.",
     threshold_opacity: "Opacity of the colored arcs.",

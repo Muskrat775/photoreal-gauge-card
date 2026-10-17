@@ -1,6 +1,6 @@
 # Photoreal Gauge Card
 
-Version 1.6.0
+Version 1.6.2
 
 ![A photo-realistic gauge on a carbon graphite panel](images/hero.png)
 
@@ -320,8 +320,8 @@ The tip glow is **off by default**. Turn on **Needle tip glow** in the Needle gr
 
 | Option | YAML key | What it does | Default |
 |---|---|---|---|
-| Font urls | `font_urls` | List of stylesheet URLs to load, such as a Google Fonts link. Example: - https://fonts.googleapis.com/css2?family=Orbitron&display=swap. To use the 24 fonts that come with the card, add: - /hacsfiles/photoreal-gauge-card/fonts/fonts.css | empty |
-| Custom fonts | `custom_fonts` | List of self-hosted fonts. Each item needs family and url, for example family: DSEG7 and url: /local/fonts/DSEG7.woff2. | empty |
+| Font urls | `font_urls` | List of stylesheet URLs to load, such as a Google Fonts link. Example: - https://fonts.googleapis.com/css2?family=Orbitron&display=swap. The 24 fonts that come with the card (/hacsfiles/photoreal-gauge-card/fonts/fonts.css) are loaded by default. Setting this list replaces that default, so keep that line in the list if you still want them, or set an empty list to load none | `["/hacsfiles/photoreal-gauge-card/fonts/fonts.css"]` |
+| Custom fonts | `custom_fonts` | List of self-hosted fonts. Each item is a font file address, for example - /hacsfiles/photoreal-gauge-card/fonts/Cinzel/Cinzel.woff (the family name is the file name, Cinzel). To choose the family name yourself use family: DSEG7 and url: /local/fonts/DSEG7.woff2. | empty |
 
 ### Thresholds
 
@@ -557,13 +557,13 @@ labels:
 
 ## Ready-made themes
 
-The `photoreal-gauge-images` and `fonts` folders contain everything for six complete looks. Paste a block into the card's YAML editor and change the `entity`. The `font_urls` line loads the bundled fonts.
+The `photoreal-gauge-images` and `fonts` folders contain everything for six complete looks. Paste a block into the card's YAML editor and change the `entity`. The bundled fonts load by default; the `font_urls` line is shown so the theme keeps working if you set your own list.
 
 ![The six ready-made themes](images/Example_gauges.jpg)
 
-### Stargate style: stone, glyphs, bronze crystal needle
+### Ancient stone: runes, amber gems, bronze crystal needle
 
-![Stargate](images/Theme_Stargate.jpg)
+![Ancient_stone](images/Theme_Ancient_stone.jpg)
 
 ```yaml
 type: custom:photoreal-gauge-card
@@ -576,15 +576,15 @@ thresholds:
 - {from: 60, to: 100, color: '#43a047'}
 font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
 number_font: Cinzel
-square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/07-stargate-stone-glyphs.jpg
-circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/07-stargate-stone-disc.jpg
-border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/07-stargate-chevron-ring.jpg
+square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/07-ancient-stone-runes.jpg
+circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/07-ancient-stone-disc.jpg
+border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/07-ancient-stone-ring.jpg
 needle_type: image
-needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/07-stargate-bronze-crystal.png
+needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/07-ancient-bronze-crystal.png
 needle_image_width: 16
-hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/07-stargate-crystal-core.png
+hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/07-ancient-crystal-core.png
 digitals:
-- {y: 76, width: 30, font: Quantico, font_size: 6.5, color: '#ffb347', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/07-stargate-stone-glyphs.jpg,
+- {y: 76, width: 30, font: Quantico, font_size: 6.5, color: '#ffb347', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/07-ancient-stone-runes.jpg,
   bg_opacity: 1}
 labels:
 - {text: '{name}', x: 50, y: 62, size: 5, font: Cinzel Decorative, color: '#e8d9a8'}
@@ -752,11 +752,13 @@ Fonts are set per element (scale numbers, labels, digital displays). Choose one 
 
 ### Bundled fonts
 
-24 open-licensed fonts (SIL Open Font License) come with the card in the `fonts` folder and work offline. Add one line and they all appear in the font dropdowns:
+24 open-licensed fonts (SIL Open Font License) come with the card in the `fonts` folder and work offline. They are loaded by default, so they all appear in the font dropdowns without any setup (the default `font_urls` is the line below):
 
 ```yaml
 font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
 ```
+
+If you set your own `font_urls` list, it replaces the default. Keep the line above in your list to keep the bundled fonts, or set `font_urls: []` to load none. On a manual install the card finds `fonts/fonts.css` next to its own file, so no path change is needed.
 
 Orbitron, Share Tech Mono, Cinzel, Cinzel Decorative, Rajdhani, Oswald, Saira Condensed, Quantico, Oxanium, Chakra Petch, Exo 2, IM Fell English SC, Rye, Bungee, Bungee Shade, Black Ops One, Wallpoet, Audiowide, Michroma, Electrolize, Iceland, VT323, Major Mono Display, Jacquard 24.
 
@@ -768,7 +770,13 @@ To use a web font, add its stylesheet under **Custom fonts**:
 font_urls: ['https://fonts.googleapis.com/css2?family=Orbitron&display=swap']
 ```
 
-To use a font file you host yourself, put it in `/config/www/fonts/` and list it:
+You can also list a single font file by its address. The font family name is the file name without its extension, so this adds a font called `Cinzel`:
+
+```yaml
+custom_fonts: [/hacsfiles/photoreal-gauge-card/fonts/Cinzel/Cinzel.woff]
+```
+
+To use a font file you host yourself and choose the family name, put it in `/config/www/fonts/` and list it with `family` and `url`:
 
 ```yaml
 custom_fonts:
@@ -809,7 +817,9 @@ Any image URL field accepts a path under `/local/` (files in `/config/www/`) or 
 
 | Version | Changes |
 |---|---|
-| 1.6.0 | **Bundled picture pack** (`photoreal-gauge-images`, 60 images in six folders) and **bundled fonts** (`fonts`, 24 families). Adding `fonts/fonts.css` under Font urls lists all of them in the font dropdowns. Six ready-made themes. **Needle tip glow is now off by default** (turn it on with `needle_tip_glow: true`). The three starter backgrounds moved to `photoreal-gauge-images/Square_backgrounds` and `sample-needle.png` to `photoreal-gauge-images/Needles`; update old `/backgrounds/` and `/images/sample-needle.png` paths. |
+| 1.6.2 | New original **ancient stone** ring (seven amber gems, rune cells) with matching renamed stone images and an `Ancient_stone` theme, replacing the earlier stone-ring images and theme. The affected files are `07-ancient-*` in the picture pack. Update any YAML that used the old `07-stargate-*` names. |
+| 1.6.1 | The bundled fonts (`fonts/fonts.css`) are now loaded by default, so the 24 shipped fonts are available without any configuration. A custom **Font urls** list replaces the default. Custom fonts accepts a plain font file address; the family name is the file name. |
+| 1.6.0 | **Bundled picture pack** (`photoreal-gauge-images`, 60 images in six folders) and **bundled fonts** (`fonts`, 24 families). Custom fonts also accepts a plain font file address. Six ready-made themes. **Needle tip glow is now off by default** (turn it on with `needle_tip_glow: true`). The three starter backgrounds moved to `photoreal-gauge-images/Square_backgrounds` and `sample-needle.png` to `photoreal-gauge-images/Needles`; update old `/backgrounds/` and `/images/sample-needle.png` paths. |
 | 1.5.0 | **Use gauge entity** check box on digital displays, text labels and LED conditions. LED indicators reworked: named, re-orderable conditions (first met wins), each with its own entity, On/Off colors or threshold color, behavior (Off, On, Blink, Fade) and separate blink on/off and fade in/out times. New LED default color. Operators now read Greater than / Less than. Older LED settings still work. Fonts added under Font urls or Custom fonts now appear in the font dropdowns, and a single URL is accepted for Font urls. |
 | 1.4.2 | LED blink and fade now cycle between the lit color and the off color instead of fading the whole LED out |
 | 1.4.1 | Guide renamed from help.md to README.md, HACS install instructions and `/hacsfiles/` paths |

@@ -2,7 +2,7 @@
 
 Version 1.7.0
 
-![A photo-realistic gauge on a carbon graphite panel](images/hero.png)
+![A photo-realistic gauge on a carbon graphite panel](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/hero.png)
 
 Photoreal Gauge Card is a custom Lovelace card for Home Assistant that draws a realistic analog gauge: a metallic outer ring, a glass-covered dial, a needle with a glowing tip, colored threshold arcs, LED indicators, text labels and LED-style digital displays. Everything can be set from the visual editor, and every field has an info icon that explains it.
 
@@ -35,7 +35,7 @@ If the card is listed in the HACS store, open **HACS**, search for **Photoreal G
 If it is not listed yet, add it as a custom repository:
 
 1. Open **HACS**, click the three-dot menu at the top right and choose **Custom repositories**.
-2. Enter `https://github.com/YOURUSERNAME/photoreal-gauge-card`, set the type to **Dashboard**, and click **Add**.
+2. Enter `https://github.com/Muskrat775/photoreal-gauge-card`, set the type to **Dashboard**, and click **Add**.
 3. Search for **Photoreal Gauge Card**, click **Download**, and hard refresh your browser.
 
 HACS adds the resource for you. The files are installed to `/config/www/community/photoreal-gauge-card/` and served from `/hacsfiles/photoreal-gauge-card/`, which is the address the example image paths in this guide use. If the card does not show up, check **Settings > Dashboards > Resources** for `/hacsfiles/photoreal-gauge-card/photoreal-gauge-card.js` of type **JavaScript module**.
@@ -89,7 +89,7 @@ Or use YAML in the card's code editor. This is the smallest working card:
 {type: 'custom:photoreal-gauge-card', entity: sensor.battery_level}
 ```
 
-![The default gauge](images/basic.png)
+![The default gauge](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/basic.png)
 
 The entity must have a numeric state (or a numeric attribute, set with `attribute`). A more complete example, which is the gauge at the top of this page:
 
@@ -145,7 +145,7 @@ Groups with a list (Thresholds, Text labels, Digital displays, LED indicators) h
 
 ## How the gauge is built
 
-![The parts of the gauge, numbered](images/anatomy.png)
+![The parts of the gauge, numbered](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/anatomy.png)
 
 1. **Square background** - the square behind everything (`square_*` options). Add a picture such as the carbon or brushed metal backgrounds.
 2. **Gauge outer ring** - the metallic ring, with optional glow and image (`border_*` options).
@@ -170,7 +170,7 @@ Items are centered on the position you give them, so very low or very high value
 
 Sizes (text size, LED size, digital width) are percentages of the card width, so the gauge scales cleanly when you resize the card.
 
-![Positions of items on the gauge](images/positions.png)
+![Positions of items on the gauge](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/positions.png)
 
 ## All options
 
@@ -224,7 +224,7 @@ hold_action: {action: more-info}
 | Glass | `glass` | Adds a glass-cover highlight over the dial and needle. | on |
 | Glass intensity | `glass_intensity` | How strong the glass highlight is, from 0 (none) to 100. | `40` |
 
-![Backgrounds: carbon graphite, brushed metal with screws, plain brushed metal](images/bg-carbon.png)
+![Backgrounds: carbon graphite, brushed metal with screws, plain brushed metal](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/bg-carbon.png)
 
 ### Gauge outer ring
 
@@ -241,7 +241,7 @@ The ring is the metallic frame around the dial. These options were previously ca
 | Inner glow color | `border_inner_glow_color` | Color of the glow just inside the ring, on the dial face. | `#00b0ff` |
 | Inner glow intensity | `border_inner_glow_intensity` | Strength of the inner glow from 0 (off) to 100. | `0` |
 
-![Outer ring variants](images/outer-ring.png)
+![Outer ring variants](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/outer-ring.png)
 
 ### Ticks & numbers
 
@@ -300,7 +300,7 @@ For each marker the card uses, in this order: the marker entity, then the fixed 
 | Needle tip use threshold | `needle_tip_use_threshold` | When on, the glow takes the color of the threshold the value is currently in. | on |
 | Needle tip glow intensity | `needle_tip_glow_intensity` | Size and brightness of the halo around the glowing line, from 0 to 100. | `60` |
 
-![Needle types](images/needles.png)
+![Needle types](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/needles.png)
 
 To use your own needle picture, make a PNG with a transparent background, drawn pointing straight up, with the pivot point about 85 percent of the way down. A ready-made example is included as `photoreal-gauge-images/Needles/sample-needle.png`:
 
@@ -313,7 +313,7 @@ To use your own needle picture, make a PNG with a transparent background, drawn 
 
 The tip glow is **off by default**. Turn on **Needle tip glow** in the Needle group to use it, together with the other tip options there. With **Tip uses threshold color** on, the glow takes the color of the threshold the value is in.
 
-![Needle tip glow variants](images/tip-glow.png)
+![Needle tip glow variants](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/tip-glow.png)
 
 ### Center hub
 
@@ -350,7 +350,7 @@ Each threshold range (Add threshold):
 | To (optional) | `to` | End of the range. If empty, the range ends where the next one starts, or at Max for the last one. | empty |
 | Color | `color` | Color of the arc, and of the needle tip glow while the value is in this range. | `#43a047` |
 
-![Threshold variants](images/thresholds.png)
+![Threshold variants](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/thresholds.png)
 
 ```yaml
 thresholds:
@@ -411,7 +411,7 @@ Each display (Add display). You can add as many as you like, each with its own e
 | Decimals | `decimals` | Digits after the decimal point. If empty, the gauge's Decimals setting is used. | empty |
 | Text when no data | `no_data_text` | Text shown when the entity is unavailable, unknown or not a number. | `--` |
 
-![Digital display variants](images/digitals.png)
+![Digital display variants](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/digitals.png)
 
 ### LED indicators
 
@@ -425,7 +425,7 @@ Each LED (Add LED). Position, size and tooltip name come first, then a **Default
 | Tooltip name | `label` | Optional name shown as a tooltip when you hover over the LED. | empty |
 | Default color (no condition met) | `default_color` | Color of the LED when none of its conditions is met. It is also the starting Off color for every condition. | `#3a0a10` |
 
-![LED examples](images/leds.png)
+![LED examples](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/leds.png)
 
 A new LED has no conditions yet, so it shows its default color. Click **Add condition** to make it react.
 
@@ -478,7 +478,7 @@ Operators: Greater than (>), Less than (<), Greater than or equal (>=), Less tha
 
 Blink and fade times are shown only when that behavior is selected. Each has separate on and off (or in and out) times, so a quick flash and a slow fade out are possible. If you enable Reduce Motion on your device, blinking and fading are switched off and the On color stays steady.
 
-![LEDs: steady, blink and fade](images/led-effects.gif)
+![LEDs: steady, blink and fade](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/led-effects.gif)
 
 **Example: battery indicator.** Steady green when full, a slow green fade while charging, a fast red blink when low. Because the first met condition wins, a charging battery that is also low shows the fade:
 
@@ -511,7 +511,7 @@ In YAML: `use_gauge_entity: false` together with `entity: sensor.other`. The min
 
 ### Carbon graphite background with corner screws
 
-![Carbon graphite](images/bg-carbon.png)
+![Carbon graphite](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/bg-carbon.png)
 
 ```yaml
 {square_image: 'pgc:Square_backgrounds/Carbon_Square_Carbon-Graphite-Screws.jpg', gauge_margin: 7}
@@ -519,7 +519,7 @@ In YAML: `use_gauge_entity: false` together with `entity: sensor.other`. The min
 
 ### Dark brushed metal
 
-![Dark brushed metal with screws](images/bg-metal.png)
+![Dark brushed metal with screws](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/bg-metal.png)
 
 ```yaml
 {square_image: 'pgc:Square_backgrounds/Metal_Square_Dark-Brushed-Metal-Screws.jpg', gauge_margin: 7}
@@ -527,7 +527,7 @@ In YAML: `use_gauge_entity: false` together with `entity: sensor.other`. The min
 
 A version without screws is `pgc:Square_backgrounds/Metal_Square_Dark-Brushed-Metal.jpg`:
 
-![Dark brushed metal](images/bg-plain.png)
+![Dark brushed metal](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/bg-plain.png)
 
 ### Neon outer ring
 
@@ -629,7 +629,7 @@ Ready-made looks come in **packs**. Open the **Photoreal theme** picker at the t
 
 The HACS install (or the main zip) gives you the card and the **Core** pack only. The look packs are separate downloads, so the card stays small and you only install the looks you want.
 
-1. Open the [Releases page](https://github.com/YOURUSERNAME/photoreal-gauge-card/releases) and find the newest release named **Packs**.
+1. Open the [Releases page](https://github.com/Muskrat775/photoreal-gauge-card/releases) and find the newest release named **Packs**.
 2. Download the pack zips you want, for example `photoreal-gauge-pack-metal.zip`. `photoreal-gauge-packs-all.zip` has every pack in one file.
 3. Unzip into `config/www/photoreal-gauge-card/` (the folder is created if it is missing). The zips are laid out so the files land in the right subfolders; merge when asked.
 4. Reload the dashboard (hard refresh). The new themes appear in the **Photoreal theme** picker. You do not need to restart Home Assistant or edit any resources.

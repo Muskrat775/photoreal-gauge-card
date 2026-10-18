@@ -1,0 +1,55 @@
+schema: 1
+kind: template
+id: core_power-watts
+pack: core
+name: Power (watts)
+description: 0-5000 W with green, yellow and red zones.
+tags:
+- power
+- energy
+requires:
+  card: '>=1.7.0'
+inputs:
+- key: entity
+  label: Power sensor
+  required: true
+  domain:
+  - sensor
+  device_class: power
+suggest:
+  device_class:
+  - power
+  unit:
+  - W
+  domain:
+  - sensor
+config:
+  min: 0
+  max: 5000
+  decimals: 0
+  start_angle: -135
+  end_angle: 135
+  major_ticks: 6
+  minor_ticks: 4
+  thresholds:
+  - from: 0
+    to: 2000
+    color: '#43a047'
+  - from: 2000
+    to: 4000
+    color: '#fdd835'
+  - from: 4000
+    to: 5000
+    color: '#e53935'
+  labels:
+  - text: '{name}'
+    x: 50
+    y: 62
+    size: 5
+  digitals:
+  - x: 50
+    y: 76
+    width: 30
+    font_size: 6.5
+  unit: W
+  name: Power

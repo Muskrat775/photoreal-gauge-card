@@ -1,0 +1,54 @@
+schema: 1
+kind: template
+id: core_humidity
+pack: core
+name: Humidity
+description: 0-100 % relative humidity, green in the comfortable middle.
+tags:
+- humidity
+requires:
+  card: '>=1.7.0'
+inputs:
+- key: entity
+  label: Humidity sensor
+  required: true
+  domain:
+  - sensor
+  device_class: humidity
+suggest:
+  device_class:
+  - humidity
+  unit:
+  - '%'
+  domain:
+  - sensor
+config:
+  min: 0
+  max: 100
+  decimals: 0
+  start_angle: -135
+  end_angle: 135
+  major_ticks: 11
+  minor_ticks: 4
+  thresholds:
+  - from: 0
+    to: 30
+    color: '#fdd835'
+  - from: 30
+    to: 60
+    color: '#43a047'
+  - from: 60
+    to: 100
+    color: '#29b6f6'
+  labels:
+  - text: '{name}'
+    x: 50
+    y: 62
+    size: 5
+  digitals:
+  - x: 50
+    y: 76
+    width: 30
+    font_size: 6.5
+  unit: '%'
+  name: Humidity

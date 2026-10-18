@@ -1,6 +1,6 @@
 # Photoreal Gauge Card
 
-Version 1.6.2
+Version 1.7.0
 
 ![A photo-realistic gauge on a carbon graphite panel](images/hero.png)
 
@@ -18,6 +18,7 @@ Photoreal Gauge Card is a custom Lovelace card for Home Assistant that draws a r
 - [LED conditions](#led-conditions)
 - [Use gauge entity](#use-gauge-entity)
 - [Examples with pictures](#examples-with-pictures)
+- [Themes, templates, gauges and packs](#themes-templates-gauges-and-packs)
 - [Ready-made themes](#ready-made-themes)
 - [Fonts](#fonts)
 - [Backgrounds and images](#backgrounds-and-images)
@@ -34,7 +35,7 @@ If the card is listed in the HACS store, open **HACS**, search for **Photoreal G
 If it is not listed yet, add it as a custom repository:
 
 1. Open **HACS**, click the three-dot menu at the top right and choose **Custom repositories**.
-2. Enter `https://github.com/Muskrat775/photoreal-gauge-card`, set the type to **Dashboard**, and click **Add**.
+2. Enter `https://github.com/YOURUSERNAME/photoreal-gauge-card`, set the type to **Dashboard**, and click **Add**.
 3. Search for **Photoreal Gauge Card**, click **Download**, and hard refresh your browser.
 
 HACS adds the resource for you. The files are installed to `/config/www/community/photoreal-gauge-card/` and served from `/hacsfiles/photoreal-gauge-card/`, which is the address the example image paths in this guide use. If the card does not show up, check **Settings > Dashboards > Resources** for `/hacsfiles/photoreal-gauge-card/photoreal-gauge-card.js` of type **JavaScript module**.
@@ -52,7 +53,9 @@ You need access to the `/config` folder (File editor, Studio Code Server, Samba,
     photoreal-gauge-card.js
     README.md
     images/                  (pictures used by this guide)
-    photoreal-gauge-images/  (62 ready-made backgrounds, dials, rings, needles, hubs, label plates)
+    photoreal-gauge-images/  (the Core pictures plus the pictures of every installed pack)
+    packs/ themes/ templates/ gauges/   (Photoreal packs: Core, Stone Glyph, Metal, Carbon, ...)
+    lib/                     (YAML reader, loaded only by the editor)
     fonts/                   (24 ready-made fonts and fonts.css)
 ```
 
@@ -94,7 +97,7 @@ The entity must have a numeric state (or a numeric attribute, set with `attribut
 type: custom:photoreal-gauge-card
 entity: sensor.demo
 name: Battery
-square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/carbon-graphite-screws.jpg
+square_image: pgc:Square_backgrounds/Carbon_Square_Carbon-Graphite-Screws.jpg
 thresholds:
 - {from: 0, to: 25, color: '#e53935'}
 - {from: 25, to: 60, color: '#fdd835'}
@@ -123,7 +126,8 @@ The editor is organized in groups that you can open and close:
 
 | Group | What it holds |
 |---|---|
-| Main settings (top) | Entity, name, attribute, unit, min, max, decimals, start and end angle |
+| Theme / template / gauge bar (top) | Choose, save, revert and undo looks and behaviors; manage packs |
+| Main settings | Entity, name, attribute, unit, min, max, decimals, start and end angle |
 | Actions | Tap, hold and double-tap behavior |
 | Backgrounds (square & circle) | The square behind the gauge and the round dial face, shading, shadow and glass |
 | Gauge outer ring | The metallic ring around the dial, its image and glows |
@@ -255,6 +259,9 @@ The ring is the metallic frame around the dial. These options were previously ca
 | Number color | `number_color` | Color of the scale numbers. | `#ffffff` |
 | Number size | `number_size` | Size of the scale numbers. Try values between 7 and 12. | `9` |
 | Number font | `number_font` | Font family for the scale numbers. You can type any font that is installed or loaded under Custom fonts. | `Arial, sans-serif` |
+| Bold | `number_bold` | Draw the scale numbers in bold. | off |
+| Italic | `number_italic` | Draw the scale numbers in italic. | off |
+| Underline | `number_underline` | Underline the scale numbers. | off |
 | Number decimals | `number_decimals` | Number of digits after the decimal point in the scale numbers. | `0` |
 
 ### Min/max markers
@@ -365,7 +372,9 @@ Each label (Add label):
 | Rotate | `rotate` | Rotates the label in degrees. Positive values turn it clockwise. | `0` |
 | Color | `color` | Text color. | `#ffffff` |
 | Font | `font` | Font family. Leave empty to use the scale number font. | empty |
-| Weight | `weight` | Normal or bold text. | `normal` |
+| Bold | `bold` | Draw the text in bold. | empty |
+| Italic | `italic` | Draw the text in italic. | empty |
+| Underline | `underline` | Underline the text. | empty |
 | Background color | `bg_color` | Color of a box behind the text. Leave unset for no box. | `#000000` |
 | Background opacity | `bg_opacity` | Opacity of the box behind the text. Applies to both the box color and the background image. | `1` |
 | Background image URL | `bg_image` | URL of an image used as the label's background. | empty |
@@ -389,6 +398,9 @@ Each display (Add display). You can add as many as you like, each with its own e
 | Y position | `y` | Vertical position as a percentage of the card height. 0 is the top, 50 the centre and 100 the bottom. | `78` |
 | Width | `width` | Width of the display box as a percentage of the card width. | `24` |
 | Font | `font` | Font for the digits. Type any installed or loaded font family. | `'Courier New', monospace` |
+| Bold | `bold` | Draw the digits in bold. | off |
+| Italic | `italic` | Draw the digits in italic. | off |
+| Underline | `underline` | Underline the digits. | off |
 | Font size | `font_size` | Size of the digits as a percentage of the card width. | `6.5` |
 | Digit color | `color` | Color of the digits. | `#7CFC00` |
 | Glow | `glow` | Adds a soft glow around the digits, like an LED display. | on |
@@ -502,8 +514,7 @@ In YAML: `use_gauge_entity: false` together with `entity: sensor.other`. The min
 ![Carbon graphite](images/bg-carbon.png)
 
 ```yaml
-{square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/carbon-graphite-screws.jpg,
-  gauge_margin: 7}
+{square_image: 'pgc:Square_backgrounds/Carbon_Square_Carbon-Graphite-Screws.jpg', gauge_margin: 7}
 ```
 
 ### Dark brushed metal
@@ -511,11 +522,10 @@ In YAML: `use_gauge_entity: false` together with `entity: sensor.other`. The min
 ![Dark brushed metal with screws](images/bg-metal.png)
 
 ```yaml
-{square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/dark-brushed-metal-screws.jpg,
-  gauge_margin: 7}
+{square_image: 'pgc:Square_backgrounds/Metal_Square_Dark-Brushed-Metal-Screws.jpg', gauge_margin: 7}
 ```
 
-A version without screws is `dark-brushed-metal.jpg`:
+A version without screws is `pgc:Square_backgrounds/Metal_Square_Dark-Brushed-Metal.jpg`:
 
 ![Dark brushed metal](images/bg-plain.png)
 
@@ -556,196 +566,79 @@ labels:
 - {text: '{name}', x: 50, y: 30, size: 5}
 ```
 
+## Themes, templates, gauges and packs
+
+A gauge is made of two independent things, and you can save, share and swap each one:
+
+| Kind | What it holds | Examples |
+|---|---|---|
+| **Photoreal theme** | The look: square, dial, ring, needle and hub pictures, fonts (with bold, italic and underline) and colors for numbers, ticks, labels and displays | Solar "Rooftop Array", Woodsy "Oak & Brass" |
+| **Photoreal template** | The behavior: min/max, unit, scale, thresholds, label text and positions, digital displays and LEDs. Entities become **inputs** you pick when you apply it | "Battery percent", "Power (watts)", "Tank level" |
+| **Photoreal gauge** | A theme and a template together, ready to use | "Battery - Chrome Enamel" |
+
+Themes and templates are delivered in **packs**. A pack that borrows pictures from another lists it under `requires: packs:`, and the pickers grey it out until that pack is installed. A pack may contain only pictures (no themes); they appear in **Browse**, which has a filter by pack name. The **Core** pack ships with the card. All other packs (Stone Glyph, Metal, Carbon, Glass & Sci-Fi, Vintage, Marine, Aviation, Neon Arcade, Woodsy, Solar, Off-grid) are separate downloads: unzip one into `config/www/photoreal-gauge-card/` and it shows up in the pickers (or open **Manage / import** and type the pack id).
+
+At the top of the editor, the bar shows the current theme, template and gauge. A new gauge starts as **Custom**, with no pictures.
+
+| Button | What it does |
+|---|---|
+| **Choose** | Opens a picker with a live preview of each item on *your* gauge. A theme is applied immediately. A template or gauge asks for its inputs (the entity, and optional extras such as a charging sensor) and then replaces the settings it covers. |
+| **Save as** | Saves the current look, behavior or both as your own item. Your items are listed as "My items" and can use any name. |
+| **Update** | Overwrites one of your own saved items with the current settings. Shown when the gauge differs from it. |
+| **Revert** | Puts the gauge back exactly as the chosen item defines it. |
+| **Undo** | Undoes the last apply, revert or save in this editor session. |
+| **Manage / import** | Rename, delete, export and import your items as YAML, and add or remove packs. |
+
+When you change something after choosing a theme or template, a **Modified** badge appears. Nothing is locked: you can edit any field, then use **Save as** or **Revert**.
+
+Applying a theme never touches the entity, name, scale or LEDs. Applying a template never touches the look. A gauge sets both. Applying a template keeps your current theme. The **Apply the theme's colors** switch in the theme picker lets you take a theme's pictures and fonts but keep your own colors.
+
+Next to every image field there is a **Browse** button. It shows thumbnails of every picture in the matching folder (square backgrounds, dial faces, outer rings, needles, hubs, label and display backgrounds) from all installed packs.
+
+### Fonts: bold, italic and underline
+
+The scale numbers, every text label and every digital display have **Bold**, **Italic** and **Underline** switches next to the font. In YAML: `number_bold`, `number_italic`, `number_underline` for the scale numbers and `bold`, `italic`, `underline` on a label or display. (Older labels with `weight: bold` still work.) Many of the bundled fonts only come in one weight, so Bold and Italic may be drawn by the browser from the regular shape.
+
+### Where your items are stored
+
+Your saved items are kept in Home Assistant's frontend storage, shared by all users of your Home Assistant, or in your browser if that is not available. Use **Manage / import** to export them as `.theme.yaml`, `.template.yaml` or `.gauge.yaml` files you can share. Imported files are checked: only picture paths inside the card's folders are accepted.
+
+### Writing your own pack
+
+A pack is a folder tree with a manifest, `packs/<id>.pack.yaml`, plus `themes/`, `templates/` and `gauges/` files and pictures named `<Pack>_<Type>_<Name>.<ext>` in `photoreal-gauge-images/`. The full file format is described in the file-format spec; `tools/pgclint.py` checks a pack for mistakes.
+
 ## Ready-made themes
 
-The `photoreal-gauge-images` and `fonts` folders contain everything for six complete looks. Paste a block into the card's YAML editor and change the `entity`. The bundled fonts load by default; the `font_urls` line is shown so the theme keeps working if you set your own list.
+Ready-made looks come in **packs**. Open the **Photoreal theme** picker at the top of the editor and choose one, or see the packs below. Each pack has a preview sheet at `packs/<id>/preview.jpg`.
 
-![The six ready-made themes](images/Example_gauges.jpg)
+| Pack | What is in it |
+|---|---|
+| **Core** | The five templates (battery, temperature, power, tank, humidity) and a sample needle. No themes: it is the behavior half; install a look pack to use them |
+| **Stone Glyph** | The carved ancient-stone set plus the iris diaphragm and energy pool dials: 3 themes |
+| **Metal** | Chrome, steel, aluminum, brass, gold, copper and knurled steel: 8 themes |
+| **Carbon** | Carbon fiber, black plastic and red racing accents: 4 themes |
+| **Glass & Sci-Fi** | Smoked and blue glass, radar green, sci-fi bulkhead and amber alert: 4 themes (plus a lava dial picture) |
+| **Vintage** | Walnut, brass, stitched leather and a white ceramic needle: 3 themes. **Needs the Metal pack** for its dials and rings |
+| **Marine** | Teak, navy gelcoat, brass portholes, stainless bolts and white rope: 4 themes |
+| **Aviation** | Crinkle-black panels, olive cockpit paint, chrome bezels: 4 themes |
+| **Neon Arcade** | Synthwave grids, retro suns and neon tube rings: 4 themes |
+| **Woodsy**, **Solar**, **Off-grid** | 9 themes each |
 
-### Ancient stone: runes, amber gems, bronze crystal needle
 
-![Ancient_stone](images/Theme_Ancient_stone.jpg)
+### Getting the add-on packs
 
-```yaml
-type: custom:photoreal-gauge-card
-entity: sensor.your_entity
-name: Battery
-gauge_margin: 6
-thresholds:
-- {from: 0, to: 25, color: '#e53935'}
-- {from: 25, to: 60, color: '#fdd835'}
-- {from: 60, to: 100, color: '#43a047'}
-font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
-number_font: Cinzel
-square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/07-ancient-stone-runes.jpg
-circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/07-ancient-stone-disc.jpg
-border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/07-ancient-stone-ring.jpg
-needle_type: image
-needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/07-ancient-bronze-crystal.png
-needle_image_width: 16
-hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/07-ancient-crystal-core.png
-digitals:
-- {y: 76, width: 30, font: Quantico, font_size: 6.5, color: '#ffb347', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/07-ancient-stone-runes.jpg,
-  bg_opacity: 1}
-labels:
-- {text: '{name}', x: 50, y: 62, size: 5, font: Cinzel Decorative, color: '#e8d9a8'}
-major_tick_color: '#e8d9a8'
-number_color: '#e8d9a8'
-```
+The HACS install (or the main zip) gives you the card and the **Core** pack only. The look packs are separate downloads, so the card stays small and you only install the looks you want.
 
-### Chrome and white enamel
+1. Open the [Releases page](https://github.com/YOURUSERNAME/photoreal-gauge-card/releases) and find the newest release named **Packs**.
+2. Download the pack zips you want, for example `photoreal-gauge-pack-metal.zip`. `photoreal-gauge-packs-all.zip` has every pack in one file.
+3. Unzip into `config/www/photoreal-gauge-card/` (the folder is created if it is missing). The zips are laid out so the files land in the right subfolders; merge when asked.
+4. Reload the dashboard (hard refresh). The new themes appear in the **Photoreal theme** picker. You do not need to restart Home Assistant or edit any resources.
 
-![Chrome_enamel](images/Theme_Chrome_enamel.jpg)
-
-```yaml
-type: custom:photoreal-gauge-card
-entity: sensor.your_entity
-name: Battery
-gauge_margin: 6
-thresholds:
-- {from: 0, to: 25, color: '#e53935'}
-- {from: 25, to: 60, color: '#fdd835'}
-- {from: 60, to: 100, color: '#43a047'}
-font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
-number_font: Saira Condensed
-square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/02-brushed-aluminum.jpg
-circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/01-white-enamel.jpg
-border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/01-chrome.jpg
-needle_type: image
-needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/01-chrome-pointer.png
-needle_image_width: 16
-hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/01-chrome-dome.png
-digitals:
-- {y: 76, width: 30, font: Rajdhani, font_size: 6.5, color: '#1a1a1a', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/01-brushed-steel-plate.jpg,
-  bg_opacity: 1}
-labels:
-- {text: '{name}', x: 50, y: 62, size: 5, font: Oswald, color: '#333333'}
-number_color: '#1a1a1a'
-major_tick_color: '#1a1a1a'
-minor_tick_color: '#555555'
-```
-
-### Radar green on smoked glass
-
-![Radar](images/Theme_Radar.jpg)
-
-```yaml
-type: custom:photoreal-gauge-card
-entity: sensor.your_entity
-name: Battery
-gauge_margin: 6
-thresholds:
-- {from: 0, to: 25, color: '#e53935'}
-- {from: 25, to: 60, color: '#fdd835'}
-- {from: 60, to: 100, color: '#43a047'}
-font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
-number_font: Share Tech Mono
-square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/06-smoked-glass.jpg
-circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/09-radar-green.jpg
-border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/06-blue-glass.jpg
-needle_type: image
-needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/09-neon-green-line.png
-needle_image_width: 16
-hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/04-glass-dome.png
-digitals:
-- {y: 76, width: 30, font: VT323, font_size: 6.5, color: '#16351a', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/04-green-lcd.jpg,
-  bg_opacity: 1}
-labels:
-- {text: '{name}', x: 50, y: 62, size: 5, font: Share Tech Mono, color: '#9dffb0'}
-number_color: '#9dffb0'
-major_tick_color: '#9dffb0'
-```
-
-### Carbon fiber and red racing
-
-![Carbon_red](images/Theme_Carbon_red.jpg)
-
-```yaml
-type: custom:photoreal-gauge-card
-entity: sensor.your_entity
-name: Battery
-gauge_margin: 6
-thresholds:
-- {from: 0, to: 25, color: '#e53935'}
-- {from: 25, to: 60, color: '#fdd835'}
-- {from: 60, to: 100, color: '#43a047'}
-font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
-number_font: Orbitron
-square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/04-carbon-fiber.jpg
-circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/02-matte-black.jpg
-border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/10-red-neon-anodized.jpg
-needle_type: image
-needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/02-red-plastic.png
-needle_image_width: 16
-hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/03-black-plastic-dome.png
-digitals:
-- {y: 76, width: 30, font: Orbitron, font_size: 6.5, color: '#ff4d4d', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/08-carbon-fiber.jpg,
-  bg_opacity: 1}
-labels:
-- {text: '{name}', x: 50, y: 62, size: 5, font: Oxanium, color: '#f0f0f0'}
-```
-
-### Brass steampunk
-
-![Brass_steampunk](images/Theme_Brass_steampunk.jpg)
-
-```yaml
-type: custom:photoreal-gauge-card
-entity: sensor.your_entity
-name: Battery
-gauge_margin: 6
-thresholds:
-- {from: 0, to: 25, color: '#e53935'}
-- {from: 25, to: 60, color: '#fdd835'}
-- {from: 60, to: 100, color: '#43a047'}
-font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
-number_font: IM Fell English SC
-square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/08-brass-steampunk.jpg
-circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/06-vintage-cream.jpg
-border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/09-riveted-brass.jpg
-needle_type: image
-needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/03-brass-spear.png
-needle_image_width: 16
-hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/02-brass-dome.png
-digitals:
-- {y: 76, width: 30, font: Cinzel Decorative, font_size: 6.5, color: '#2e1f0a', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/06-brass-plate.jpg,
-  bg_opacity: 1}
-labels:
-- {text: '{name}', x: 50, y: 62, size: 5, font: Rye, color: '#4a3a1e'}
-number_color: '#3a2a12'
-major_tick_color: '#3a2a12'
-minor_tick_color: '#6b5530'
-```
-
-### Lava and sci-fi bulkhead
-
-![Lava](images/Theme_Lava.jpg)
-
-```yaml
-type: custom:photoreal-gauge-card
-entity: sensor.your_entity
-name: Battery
-gauge_margin: 6
-thresholds:
-- {from: 0, to: 25, color: '#e53935'}
-- {from: 25, to: 60, color: '#fdd835'}
-- {from: 60, to: 100, color: '#43a047'}
-font_urls: [/hacsfiles/photoreal-gauge-card/fonts/fonts.css]
-number_font: Black Ops One
-square_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Square_backgrounds/10-scifi-bulkhead.jpg
-circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/10-lava-cracks.jpg
-border_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Outer_rings/08-knurled-steel.jpg
-needle_type: image
-needle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Needles/06-orange-arrow.png
-needle_image_width: 16
-hub_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Hubs/09-ruby-jewel.png
-digitals:
-- {y: 76, width: 30, font: Wallpoet, font_size: 6.5, color: '#ffb02e', bg_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Label_and_display_backgrounds/05-amber-display.jpg,
-  bg_opacity: 1}
-labels:
-- {text: '{name}', x: 50, y: 62, size: 5, font: Bungee Shade, color: '#fff1d6', bg_color: '#000000', bg_opacity: 0.6,
-  padding: 0.8, radius: 1.2}
-```
+Notes:
+- Packs live in `config/www/photoreal-gauge-card/` (served as `/local/photoreal-gauge-card/`) whether the card itself was installed by HACS or by hand, so a HACS update of the card never removes them.
+- **Vintage** needs the **Metal** pack too. The picker greys it out until Metal is installed.
+- To remove a pack, delete its files: `packs/<id>.pack.yaml`, the folder `packs/<id>/`, its `<id>_*` files in `themes`, `templates` and `gauges`, and its `<Pack>_*` pictures in `photoreal-gauge-images`.
+- Packs can also be added from the editor: **Manage / import**, then type the pack id.
 
 ## Fonts
 
@@ -788,7 +681,7 @@ Then enter `DSEG7` as the font of a digital display.
 
 ## Backgrounds and images
 
-Any image URL field accepts a path under `/local/` (files in `/config/www/`) or a full `https://` address. The card ships with 62 ready-made pictures in `photoreal-gauge-images`, 10 for each place a picture can go (plus two extra dial faces):
+Any image URL field accepts a path under `/local/` (files in `/config/www/`) or a full `https://` address. Pictures are delivered in packs, so you can also pick one with the **Browse** button next to each image field. A picture from a pack is written as `pgc:<Folder>/<File>`, for example `pgc:Needles/Metal_Needle_Chrome-Pointer.png`; the card finds it wherever the pack is installed. The folders are:
 
 | Folder | Card field | Size |
 |---|---|---|
@@ -799,19 +692,19 @@ Any image URL field accepts a path under `/local/` (files in `/config/www/`) or 
 | `Hubs` | `hub_image` | 512 x 512 transparent PNG |
 | `Label_and_display_backgrounds` | `bg_image` of a label or digital display | 768 x 288 JPG |
 
-`photoreal-gauge-images/README.md` lists every picture, and `_previews` has a contact sheet per folder. The three original dark backgrounds are in `Square_backgrounds` (`carbon-graphite-screws.jpg`, `dark-brushed-metal-screws.jpg`, `dark-brushed-metal.jpg`). Leave a margin around the gauge (**Gauge margin** 6 to 9) so the corner screws stay visible.
+The three original dark backgrounds are now `Carbon_Square_Carbon-Graphite-Screws.jpg`, `Metal_Square_Dark-Brushed-Metal-Screws.jpg` and `Metal_Square_Dark-Brushed-Metal.jpg` (Carbon and Metal packs). Leave a margin around the gauge (**Gauge margin** 6 to 9) so the corner screws stay visible.
 
 ### Circle background conditions
 
 The circle (dial face) can change with a state. Set the normal look with **Circle image URL** and **Circle color** under Backgrounds, then open **Circle background conditions** in the editor and click **Add condition**. Each condition has a name, an entity (the gauge entity unless you un-tick **Use gauge entity**), an operator and value, and the **Circle image URL** and/or **Circle color** to show while it is met. The first condition that is met, from top to bottom, wins. If none is met, the default circle shows. A condition with no value is always met, so it works as a last catch-all. Use the arrows or drag the handle to re-order.
 
-This example shows the iris dial normally, an energy pool above 80, and lava cracks below 15:
+This example shows the iris dial normally, an energy pool above 80, and a second picture below 15:
 
 ```yaml
-circle_image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/11-iris-diaphragm.jpg
+circle_image: pgc:Dial_faces/Stoneglyph_Dial_Iris-Diaphragm.jpg
 circle_conditions:
-- {name: High, operator: above, value: 80, image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/12-energy-pool.jpg}
-- {name: Low, operator: below, value: 15, image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/10-lava-cracks.jpg}
+- {name: High, operator: above, value: 80, image: 'pgc:Dial_faces/Stoneglyph_Dial_Energy-Pool.jpg'}
+- {name: Low, operator: below, value: 15, image: 'pgc:Dial_faces/Scifi_Dial_Lava-Cracks.jpg'}
 ```
 
 A condition can watch another entity:
@@ -819,7 +712,7 @@ A condition can watch another entity:
 ```yaml
 circle_conditions:
 - {name: Charging, use_gauge_entity: false, entity: binary_sensor.charging, operator: equals, value: 'on',
-  image: /hacsfiles/photoreal-gauge-card/photoreal-gauge-images/Dial_faces/12-energy-pool.jpg}
+  image: 'pgc:Dial_faces/Stoneglyph_Dial_Energy-Pool.jpg'}
 ```
 
 The image or color changes at once (there is no fade). A condition that sets only an image keeps the default color, and one that sets only a color keeps the default image. The image is drawn on top of the color, so a color-only condition is only visible if the default image is transparent or semi-transparent (see **Circle image opacity**).
@@ -841,6 +734,7 @@ The image or color changes at once (there is no fade). A condition that sets onl
 
 | Version | Changes |
 |---|---|
+| 1.7.0 | **Photoreal themes, templates, gauges and packs** (Core, Stone Glyph, Metal, Carbon, Glass & Sci-Fi, Vintage, Marine, Aviation, Neon Arcade, Woodsy, Solar and Off-grid; the classic numbered pictures moved into packs), image **Browse** buttons, and **bold, italic and underline** for the scale numbers, labels and digital displays. |
 | 1.6.2 | New original **ancient stone** ring (seven amber gems, rune cells) with matching renamed stone images and an `Ancient_stone` theme, replacing the earlier stone-ring images and theme. The affected files are `07-ancient-*` in the picture pack. Update any YAML that used the old `07-stargate-*` names. **Circle background conditions**: a default circle image/color plus an ordered list of conditions that swap them (`circle_conditions`). New dial faces `11-iris-diaphragm` (overlapping steel blades) and `12-energy-pool` (glowing blue ripples). |
 | 1.6.1 | The bundled fonts (`fonts/fonts.css`) are now loaded by default, so the 24 shipped fonts are available without any configuration. A custom **Font urls** list replaces the default. Custom fonts accepts a plain font file address; the family name is the file name. |
 | 1.6.0 | **Bundled picture pack** (`photoreal-gauge-images`, 60 images in six folders) and **bundled fonts** (`fonts`, 24 families). Custom fonts also accepts a plain font file address. Six ready-made themes. **Needle tip glow is now off by default** (turn it on with `needle_tip_glow: true`). The three starter backgrounds moved to `photoreal-gauge-images/Square_backgrounds` and `sample-needle.png` to `photoreal-gauge-images/Needles`; update old `/backgrounds/` and `/images/sample-needle.png` paths. |

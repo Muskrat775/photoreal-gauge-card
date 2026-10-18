@@ -1,13 +1,30 @@
 /*!
- * photoreal-gauge-card  v1.6.2
+ * photoreal-gauge-card  v1.7.0
  * Photo-realistic analog gauge card for Home Assistant (Lovelace)
  *
  * Coordinates for labels / LEDs / digital displays: X and Y are PERCENT of the
  * square card (0-100). 50,50 is the gauge centre. Sizes are % of card width.
  */
-const PGC_VERSION = "1.6.2";
+const PGC_VERSION = "1.7.0";
 /* The font pack shipped next to this file (/hacsfiles/photoreal-gauge-card/fonts/fonts.css with HACS). It is the default for font_urls. */
 const PGC_FONTS_CSS = new URL("fonts/fonts.css", import.meta.url).href;
+
+/* Asset references: "pgc:<Folder>/<File>" points into photoreal-gauge-images. Names that start with two digits and a hyphen are the built-in
+   (Core) images, which live next to this file; everything else is an add-on pack image in the user folder (config/www/photoreal-gauge-card). */
+const PGC_ROOT = new URL("./", import.meta.url).href;
+/* Packs live next to the card in a manual install; with HACS the card is in /hacsfiles/ and packs go in config/www/photoreal-gauge-card/ */
+let PGC_USER_ROOT = /\/hacsfiles\//.test(PGC_ROOT) ? "/local/photoreal-gauge-card/" : PGC_ROOT;
+try {   // the editor remembers where it actually found the packs
+  const h = localStorage.getItem("pgc_pack_root");
+  if (h && /^\/(local|hacsfiles)\/[A-Za-z0-9._\/-]*\/$/.test(h) && !/\.\./.test(h)) PGC_USER_ROOT = h;
+} catch (_) { /* no storage */ }
+const PGC_IMG_FOLDERS = ["Square_backgrounds", "Dial_faces", "Outer_rings", "Needles", "Hubs", "Label_and_display_backgrounds"];
+function pgcAsset(v) {
+  if (typeof v !== "string" || !v.startsWith("pgc:")) return v;
+  const m = v.slice(4).match(/^([A-Za-z_]+)\/([A-Za-z0-9][A-Za-z0-9._-]*)$/);
+  if (!m || !PGC_IMG_FOLDERS.includes(m[1])) return "";
+  return (/^\d\d-/.test(m[2]) ? PGC_ROOT : PGC_USER_ROOT) + "photoreal-gauge-images/" + m[1] + "/" + m[2];
+}
 
 /* custom_fonts item: {family, url, weight} or just a font file URL (family is taken from the file name, e.g. .../Cinzel/Cinzel.woff -> Cinzel) */
 function pgcCustomFont(f) {
@@ -42,7 +59,7 @@ const PGC_DEFAULTS = {
   major_tick_length: 10, minor_tick_length: 5,
   major_tick_width: 1.8, minor_tick_width: 0.8,
   show_numbers: true, number_color: "#ffffff", number_size: 9,
-  number_font: "Arial, sans-serif", number_decimals: 0,
+  number_font: "Arial, sans-serif", number_bold: false, number_italic: false, number_underline: false, number_decimals: 0,
   // thresholds
   thresholds: [], threshold_position: "outer", threshold_width: 5,
   threshold_opacity: 0.9, threshold_glow: false,
@@ -66,7 +83,7 @@ const PGC_DEFAULTS = {
 /* Defaults for each entry in `digitals`. */
 const PGC_DIGITAL_DEFAULTS = {
   x: 50, y: 78, width: 24,
-  font: "'Courier New', monospace", font_size: 6.5,
+  font: "'Courier New', monospace", font_size: 6.5, bold: false, italic: false, underline: false,
   color: "#7CFC00", glow: true,
   bg_color: "#000000", bg_image: "", bg_opacity: 0.6,
   show_unit: true, decimals: null, no_data_text: "--",
@@ -312,6 +329,11 @@ class PhotorealGaugeCard extends HTMLElement {
     });
     c.circle_conditions = (Array.isArray(c.circle_conditions) ? c.circle_conditions : []).filter((x) => x && typeof x === "object").map((t) => normColors(t, ["color"]));
     c.digitals = pgcDigitalList(config).map((t) => normColors({ ...PGC_DIGITAL_DEFAULTS, ...t }, ["color", "bg_color"]));
+    // pgc:<Folder>/<File> image references become real URLs
+    ["square_image", "circle_image", "border_image", "needle_image", "hub_image"].forEach((k) => { c[k] = pgcAsset(c[k]); });
+    const bgFix = (l) => (l && l.bg_image ? { ...l, bg_image: pgcAsset(l.bg_image) } : l);
+    c.labels = c.labels.map(bgFix); c.digitals = c.digitals.map(bgFix);
+    c.circle_conditions = c.circle_conditions.map((l) => (l && l.image ? { ...l, image: pgcAsset(l.image) } : l));
     // font_urls / custom_fonts: accept a single value (a bare URL line in the editor) as well as a list
     ["font_urls", "custom_fonts"].forEach((k) => { c[k] = Array.isArray(c[k]) ? c[k] : (c[k] && typeof c[k] !== "number") ? [c[k]] : []; });
     PGC_ACTION_KEYS.forEach((k) => (c[k] = normAction(c[k], PGC_DEFAULTS[k])));
@@ -493,7 +515,7 @@ class PhotorealGaugeCard extends HTMLElement {
       <g fill="none" opacity="${C.threshold_opacity}">${bands}</g>
       <path d="${dMin}" stroke="${esc(C.minor_tick_color)}" stroke-width="${C.minor_tick_width}" stroke-linecap="butt" fill="none"/>
       <path d="${dMaj}" stroke="${esc(C.major_tick_color)}" stroke-width="${C.major_tick_width}" stroke-linecap="butt" fill="none"/>
-      <g fill="${esc(C.number_color)}" font-size="${nSize}" font-family="${esc(C.number_font)}" text-anchor="middle" dominant-baseline="central">${nums}</g>
+      <g fill="${esc(C.number_color)}" font-size="${nSize}" font-family="${esc(C.number_font)}" font-weight="${C.number_bold ? "bold" : "normal"}" font-style="${C.number_italic ? "italic" : "normal"}" text-decoration="${C.number_underline ? "underline" : "none"}" text-anchor="middle" dominant-baseline="central">${nums}</g>
       ${C.show_min_max ? mmTri("mmin", C.min_marker_color) + mmTri("mmax", C.max_marker_color) : ""}
     </svg>`;
 
@@ -649,7 +671,8 @@ class PhotorealGaugeCard extends HTMLElement {
       const e = mk("lbl", ov);
       S(e, {
         left: (lb.x ?? 50) + "%", top: (lb.y ?? 50) + "%", color: lb.color || "#fff",
-        fontFamily: lb.font || C.number_font, fontSize: (lb.size ?? 5) + "cqw", fontWeight: lb.weight || "normal",
+        fontFamily: lb.font || C.number_font, fontSize: (lb.size ?? 5) + "cqw", fontWeight: (lb.bold ?? lb.weight === "bold") ? "bold" : (lb.weight || "normal"),
+        fontStyle: lb.italic ? "italic" : "normal", textDecoration: lb.underline ? "underline" : "none",
         padding: (lb.padding ?? 0.6) + "cqw " + ((lb.padding ?? 0.6) * 1.6) + "cqw", borderRadius: (lb.radius ?? 0.8) + "cqw",
         transform: `translate(-50%,-50%) rotate(${lb.rotate || 0}deg)`, overflow: "hidden",
       });
@@ -661,7 +684,7 @@ class PhotorealGaugeCard extends HTMLElement {
       const e = mk("dig", ov);
       S(e, {
         left: d.x + "%", top: d.y + "%", width: d.width + "cqw", color: d.color,
-        fontFamily: d.font, fontSize: d.font_size + "cqw", padding: ".7cqw 1cqw", borderRadius: ".9cqw",
+        fontFamily: d.font, fontSize: d.font_size + "cqw", fontWeight: d.bold ? "bold" : "normal", fontStyle: d.italic ? "italic" : "normal", textDecoration: d.underline ? "underline" : "none", padding: ".7cqw 1cqw", borderRadius: ".9cqw",
         overflow: "hidden", textShadow: d.glow ? `0 0 .9cqw ${d.color}` : "none",
         boxShadow: "inset 0 .25cqw .8cqw rgba(0,0,0,.8), 0 0 0 .25cqw rgba(255,255,255,.28)",
       });
@@ -832,6 +855,409 @@ class PhotorealGaugeCard extends HTMLElement {
 }
 customElements.define("photoreal-gauge-card", PhotorealGaugeCard);
 
+/* ================================================================ PRESETS
+   Photoreal themes (the look), templates (the behavior) and gauges (both), delivered by packs.
+   A theme or template is APPLIED by copying its values into the card config; the config remembers what was applied
+   in pgc_theme / pgc_template so the editor can show "modified". Nothing here runs when a dashboard only renders gauges. */
+const PGC_SCHEMA_NO = 1;
+const PGC_STORE_KEY = "photoreal_gauge_card";
+const PGC_OFFICIAL_PACKS = ["core", "stoneglyph", "metal", "carbon", "scifi", "vintage", "marine", "aviation", "neon", "solar", "woodsy", "offgrid"];
+const PGC_FOLDER_OF = { square: "Square_backgrounds", dial: "Dial_faces", ring: "Outer_rings", needle: "Needles", hub: "Hubs", display: "Label_and_display_backgrounds" };
+
+/* ---- scopes: every config key belongs to exactly one ---- */
+const PGC_THEME_KEYS = ["square_image", "circle_image", "border_image", "needle_type", "needle_image", "needle_image_width", "hub_image",
+  "number_font", "number_bold", "number_italic", "number_underline", "number_color", "major_tick_color", "minor_tick_color", "face_shading"];
+const PGC_THEME_ITEM_KEYS = {
+  labels: ["font", "bold", "italic", "underline", "weight", "color", "bg_image"],
+  digitals: ["font", "bold", "italic", "underline", "color", "bg_color", "bg_image"],
+};
+const PGC_INSTANCE_KEYS = ["type", "entity", "name", "attribute", "min_marker_entity", "max_marker_entity", "tap_action", "hold_action", "double_tap_action",
+  "font_urls", "custom_fonts", "pgc_theme", "pgc_template", "pgc_inputs", "pgc_theme_colors", "grid_options", "layout_options", "view_layout", "visibility", "card_mod"];
+const PGC_TEMPLATE_KEYS = [...new Set([...Object.keys(PGC_DEFAULTS), "digitals", ...PGC_DIGITAL_LEGACY_KEYS])]
+  .filter((k) => !PGC_THEME_KEYS.includes(k) && !PGC_INSTANCE_KEYS.includes(k));
+
+const pgcClone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
+const pgcEmptyV = (v) => v === undefined || v === null || v === "" || v === false || (Array.isArray(v) && v.length === 0);
+
+/* ---- validation helpers (everything from a file or the store is untrusted) ---- */
+const PGC_RE_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+const PGC_RE_FONT = /^[A-Za-z0-9 ,'-]{1,60}$/;
+const PGC_RE_ENT = /^[a-z_]+\.[a-z0-9_]+$/;
+const PGC_RE_ID = /^[a-z][a-z0-9]{1,15}_[a-z0-9]+(-[a-z0-9]+)*$/;
+function pgcOkImg(v) {
+  if (v === "") return true;
+  if (typeof v !== "string" || v.length > 200 || /[\\"'()<>\s]|\.\./.test(v)) return false;
+  if (v.startsWith("pgc:")) return /^pgc:(Square_backgrounds|Dial_faces|Outer_rings|Needles|Hubs|Label_and_display_backgrounds)\/[A-Za-z0-9][A-Za-z0-9._-]*$/.test(v);
+  return /^\/(local|hacsfiles)\//.test(v);
+}
+function pgcFontSlot(v) {
+  if (typeof v === "string") return PGC_RE_FONT.test(v) ? { family: v } : null;
+  if (v && typeof v === "object" && PGC_RE_FONT.test(String(v.family))) {
+    const o = { family: String(v.family) };
+    ["bold", "italic", "underline"].forEach((s) => { if (s in v) o[s] = !!v[s]; });
+    return o;
+  }
+  return null;
+}
+/* A theme body made safe: unknown slots are dropped and every value is checked. */
+function pgcCleanTheme(t) {
+  const out = { images: {}, fonts: {}, colors: {} }, im = t?.images || {}, fo = t?.fonts || {}, co = t?.colors || {};
+  ["square", "dial", "ring", "hub", "display"].forEach((s) => { if (s in im && pgcOkImg(im[s])) out.images[s] = im[s]; });
+  if ("needle" in im) {
+    const n = typeof im.needle === "string" ? { image: im.needle } : im.needle;
+    if (n && pgcOkImg(n.image ?? "")) { out.images.needle = { image: n.image ?? "" }; if (+n.width > 0 && +n.width <= 80) out.images.needle.width = +n.width; }
+  }
+  ["number", "label", "digital"].forEach((r) => { const f = pgcFontSlot(fo[r]); if (f) out.fonts[r] = f; });
+  ["numbers", "major_ticks", "minor_ticks", "labels", "digitals", "digital_bg"].forEach((k) => { if (typeof co[k] === "string" && PGC_RE_COLOR.test(co[k])) out.colors[k] = co[k]; });
+  if (typeof co.face_shading === "boolean") out.colors.face_shading = co.face_shading;
+  return out;
+}
+/* Walk any value and blank out image strings that fail the check (used for template configs). */
+function pgcCleanConfig(v, key) {
+  if (Array.isArray(v)) return v.map((x) => pgcCleanConfig(x, key)).filter((x) => x !== undefined);
+  if (v && typeof v === "object") {
+    const o = {};
+    Object.entries(v).forEach(([k, x]) => { if (/^__proto__$|^constructor$/.test(k)) return; const r = pgcCleanConfig(x, k); if (r !== undefined) o[k] = r; });
+    return o;
+  }
+  if (typeof v === "string" && /(^|_)image$/.test(key || "") && !pgcOkImg(v)) return "";
+  return v;
+}
+/* Validate and normalise a theme / template / gauge from a file or the store. Returns null when it cannot be used. */
+function pgcCleanItem(raw, kind) {
+  if (!raw || typeof raw !== "object" || raw.kind !== kind || !(raw.schema <= PGC_SCHEMA_NO)) return null;
+  if (typeof raw.id !== "string" || !PGC_RE_ID.test(raw.id) || typeof raw.name !== "string" || !raw.name.trim()) return null;
+  if (JSON.stringify(raw).length > 65536) return null;
+  const it = { schema: raw.schema, kind, id: raw.id, pack: String(raw.pack || raw.id.split("_")[0]), name: raw.name.trim().slice(0, 40),
+    description: typeof raw.description === "string" ? raw.description.slice(0, 120) : "", tags: Array.isArray(raw.tags) ? raw.tags.filter((x) => typeof x === "string").slice(0, 8) : [] };
+  ["derived_from", "created", "theme"].forEach((k) => { if (typeof raw[k] === "string") it[k] = raw[k]; });
+  if (raw.requires && typeof raw.requires === "object") {
+    it.requires = {};
+    if (raw.requires.card) it.requires.card = String(raw.requires.card);
+    if (Array.isArray(raw.requires.packs)) it.requires.packs = raw.requires.packs.map(String).filter((x) => /^[a-z][a-z0-9]{1,15}$/.test(x)).slice(0, 8);
+  }
+  if (kind === "theme") Object.assign(it, pgcCleanTheme(raw));
+  else {
+    it.inputs = (Array.isArray(raw.inputs) ? raw.inputs : []).filter((x) => x && /^[a-z][a-z0-9_]{0,19}$/.test(String(x.key))).slice(0, 12).map((x) => ({
+      key: x.key, label: String(x.label || x.key).slice(0, 60), required: !!x.required,
+      domain: Array.isArray(x.domain) ? x.domain.filter((d) => /^[a-z_]+$/.test(String(d))) : [], device_class: typeof x.device_class === "string" && /^[a-z_]+$/.test(x.device_class) ? x.device_class : undefined }));
+    if (!it.inputs.some((x) => x.key === "entity")) it.inputs.unshift({ key: "entity", label: "Entity", required: true, domain: [] });
+    if (raw.suggest && typeof raw.suggest === "object") it.suggest = pgcClone(raw.suggest);
+    it.config = {};
+    Object.entries(pgcCleanConfig(raw.config || {}) || {}).forEach(([k, v]) => { if (PGC_TEMPLATE_KEYS.includes(k) || k === "name") it.config[k] = v; });
+    if (kind === "gauge") it.appearance = pgcCleanTheme(raw.appearance || {});
+  }
+  return it;
+}
+
+/* ---- applying a theme ---- */
+function pgcStyleSet(target, prefix, x) {                       // font styles: set true, or remove when false
+  ["bold", "italic", "underline"].forEach((s) => {
+    if (!(s in x)) return;
+    const k = prefix ? prefix + s : s;
+    if (x[s]) target[k] = true; else delete target[k];
+    if (s === "bold" && !prefix) delete target.weight;
+  });
+}
+function pgcApplyTheme(cfg, th, opts = {}) {
+  const c = pgcClone(cfg), im = th.images || {}, fo = th.fonts || {}, co = th.colors || {}, withColors = opts.colors !== false;
+  const set = (k, v) => { if (v === "" || v === null || v === undefined) delete c[k]; else c[k] = v; };
+  [["square", "square_image"], ["dial", "circle_image"], ["ring", "border_image"], ["hub", "hub_image"]].forEach(([s, k]) => { if (s in im) set(k, im[s]); });
+  if ("needle" in im) {
+    const n = typeof im.needle === "string" ? { image: im.needle } : im.needle || {};
+    if (!n.image) { delete c.needle_image; if (c.needle_type === "image") delete c.needle_type; }
+    else { c.needle_type = "image"; c.needle_image = n.image; if (n.width) c.needle_image_width = n.width; }
+  }
+  const needItems = ("display" in im) || fo.label || fo.digital || (withColors && (co.labels || co.digitals || co.digital_bg));
+  if (needItems && !Array.isArray(c.digitals)) { c.digitals = pgcDigitalList(c).map((d) => ({ ...d })); PGC_DIGITAL_LEGACY_KEYS.forEach((k) => delete c[k]); }
+  const items = (role) => (Array.isArray(c[role]) ? c[role] : []);
+  if ("display" in im) ["labels", "digitals"].forEach((r) => items(r).forEach((it) => set2(it, "bg_image", im.display)));
+  if (fo.number) { const x = pgcFontSlot(fo.number); if (x) { c.number_font = x.family; pgcStyleSet(c, "number_", x); } }
+  ["label", "digital"].forEach((role) => {
+    if (!fo[role]) return;
+    const x = pgcFontSlot(fo[role]); if (!x) return;
+    items(role + "s").forEach((it) => { it.font = x.family; pgcStyleSet(it, "", x); });
+  });
+  if (withColors) {
+    if (co.numbers) c.number_color = co.numbers;
+    if (co.major_ticks) c.major_tick_color = co.major_ticks;
+    if (co.minor_ticks) c.minor_tick_color = co.minor_ticks;
+    if (typeof co.face_shading === "boolean") c.face_shading = co.face_shading;
+    if (co.labels) items("labels").forEach((it) => { it.color = co.labels; });
+    if (co.digitals) items("digitals").forEach((it) => { it.color = co.digitals; });
+    if (co.digital_bg) items("digitals").forEach((it) => { it.bg_color = co.digital_bg; });
+  }
+  if (th.id) c.pgc_theme = th.id; else delete c.pgc_theme;
+  if (th.colors && Object.keys(th.colors).length && !withColors) c.pgc_theme_colors = false; else delete c.pgc_theme_colors;
+  return c;
+  function set2(it, k, v) { if (v) it[k] = v; else delete it[k]; }
+}
+/* The theme-scope values of a config in a canonical form, for "modified" checks. */
+function pgcThemeProj(cfg) {
+  const canon = (v) => (typeof v === "string" && v[0] === "#" ? v.toLowerCase() : v);
+  const pick = (o, keys) => { const r = {}; keys.forEach((k) => { if (!pgcEmptyV(o[k])) r[k] = canon(o[k]); }); return r; };
+  const out = pick(cfg, PGC_THEME_KEYS);
+  out.labels = (Array.isArray(cfg.labels) ? cfg.labels : []).map((l) => { const r = pick(l, PGC_THEME_ITEM_KEYS.labels); if (r.weight === "bold") { r.bold = true; } delete r.weight; return r; });
+  out.digitals = (Array.isArray(cfg.digitals) ? cfg.digitals : pgcDigitalList(cfg)).map((d) => pick(d, PGC_THEME_ITEM_KEYS.digitals));
+  return JSON.stringify(out);
+}
+function pgcThemeModified(cfg, th) { return pgcThemeProj(cfg) !== pgcThemeProj(pgcApplyTheme(cfg, th, { colors: cfg.pgc_theme_colors !== false })); }
+
+/* "pgc:Folder/File" for a URL that points into photoreal-gauge-images */
+function pgcToRef(u) {
+  const m = typeof u === "string" && u.match(/\/photoreal-gauge-images\/([A-Za-z_]+)\/([A-Za-z0-9][A-Za-z0-9._-]*)$/);
+  return m && PGC_IMG_FOLDERS.includes(m[1]) ? `pgc:${m[1]}/${m[2]}` : u;
+}
+/* A theme body read back from a config (for Save as theme, and to keep a theme alive across a template change). */
+function pgcThemeFromCfg(cfg, id) {
+  const th = { images: {}, fonts: {}, colors: {} }, ref = (u) => pgcToRef(u);
+  [["square", "square_image"], ["dial", "circle_image"], ["ring", "border_image"], ["hub", "hub_image"]].forEach(([s, k]) => { if (cfg[k]) th.images[s] = ref(cfg[k]); });
+  if (cfg.needle_image) th.images.needle = { image: ref(cfg.needle_image), ...(cfg.needle_image_width ? { width: +cfg.needle_image_width } : {}) };
+  const labels = Array.isArray(cfg.labels) ? cfg.labels : [], digs = Array.isArray(cfg.digitals) ? cfg.digitals : pgcDigitalList(cfg);
+  const disp = [...labels, ...digs].map((x) => x.bg_image).find(Boolean); if (disp) th.images.display = ref(disp);
+  const fontObj = (family, src, pre) => {
+    if (!family) return null;
+    const o = { family }, b = src[pre + "bold"] ?? (pre === "" && src.weight === "bold"), i = src[pre + "italic"], u = src[pre + "underline"];
+    if (b) o.bold = true; if (i) o.italic = true; if (u) o.underline = true;
+    return Object.keys(o).length === 1 ? family : o;
+  };
+  const nf = fontObj(cfg.number_font, cfg, "number_"); if (nf) th.fonts.number = nf;
+  const lf = labels.find((l) => l.font); if (lf) th.fonts.label = fontObj(lf.font, lf, "");
+  const df = digs.find((d) => d.font); if (df) th.fonts.digital = fontObj(df.font, df, "");
+  const cl = (k, v) => { if (typeof v === "string" && PGC_RE_COLOR.test(v)) th.colors[k] = v; };
+  cl("numbers", cfg.number_color); cl("major_ticks", cfg.major_tick_color); cl("minor_ticks", cfg.minor_tick_color);
+  cl("labels", labels.find((l) => l.color)?.color); cl("digitals", digs.find((d) => d.color)?.color); cl("digital_bg", digs.find((d) => d.bg_color)?.bg_color);
+  if (typeof cfg.face_shading === "boolean") th.colors.face_shading = cfg.face_shading;
+  if (id) th.id = id;
+  return th;
+}
+
+/* ---- applying a template ---- */
+const PGC_DROP = Symbol("drop");
+function pgcSubst(v, inputs) {
+  if (typeof v === "string") {
+    const m = v.match(/^\$input:([a-z][a-z0-9_]*)$/);
+    if (!m) return v;
+    return hasVal(inputs[m[1]]) && PGC_RE_ENT.test(String(inputs[m[1]])) ? inputs[m[1]] : PGC_DROP;
+  }
+  if (Array.isArray(v)) return v.map((x) => pgcSubst(x, inputs)).filter((x) => x !== PGC_DROP);
+  if (v && typeof v === "object") {
+    const o = {};
+    for (const [k, x] of Object.entries(v)) {
+      const r = pgcSubst(x, inputs);
+      if (r === PGC_DROP || (Array.isArray(r) && Array.isArray(x) && x.length && !r.length)) return PGC_DROP;
+      o[k] = r;
+    }
+    return o;
+  }
+  return v;
+}
+function pgcApplyTemplate(cfg, tpl, inputs = {}, opts = {}) {
+  let c = pgcClone(cfg);
+  const snap = opts.keepTheme !== false && cfg.pgc_theme ? pgcThemeFromCfg(cfg, cfg.pgc_theme) : null;
+  PGC_TEMPLATE_KEYS.forEach((k) => delete c[k]);
+  const conf = tpl.config || {};
+  Object.entries(conf).forEach(([k, v]) => {
+    if (!PGC_TEMPLATE_KEYS.includes(k)) return;
+    const r = pgcSubst(pgcClone(v), inputs); if (r !== PGC_DROP) c[k] = r;
+  });
+  if (conf.name && !hasVal(c.name)) c.name = conf.name;
+  if (hasVal(inputs.entity)) c.entity = inputs.entity;
+  const extra = {}; Object.entries(inputs).forEach(([k, v]) => { if (k !== "entity" && hasVal(v)) extra[k] = v; });
+  if (Object.keys(extra).length) c.pgc_inputs = extra; else delete c.pgc_inputs;
+  c.pgc_template = tpl.id;
+  if (snap) c = pgcApplyTheme(c, snap, { colors: cfg.pgc_theme_colors !== false });
+  return c;
+}
+function pgcApplyGauge(cfg, g, inputs = {}) {
+  let c = pgcApplyTemplate(cfg, g, inputs, { keepTheme: false });
+  c = pgcApplyTheme(c, { ...(g.appearance || {}), id: g.theme }, {});
+  c.pgc_template = g.id;
+  return c;
+}
+function pgcTemplateProj(cfg) {
+  const o = {};
+  PGC_TEMPLATE_KEYS.forEach((k) => {
+    let v = cfg[k]; if (k === "digitals" && !Array.isArray(v)) v = pgcDigitalList(cfg);
+    if (Array.isArray(v) && PGC_THEME_ITEM_KEYS[k]) v = v.map((it) => { const r = { ...it }; PGC_THEME_ITEM_KEYS[k].forEach((x) => delete r[x]); return r; });
+    if (!pgcEmptyV(v)) o[k] = v;
+  });
+  const sort = (v) => (Array.isArray(v) ? v.map(sort) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sort(v[k])])) : v);
+  return JSON.stringify(sort(o));
+}
+function pgcTemplateModified(cfg, it) {
+  const inputs = { entity: cfg.entity, ...(cfg.pgc_inputs || {}) };
+  const after = it.kind === "gauge" ? pgcApplyGauge(cfg, it, inputs) : pgcApplyTemplate(cfg, it, inputs);
+  return pgcTemplateProj(cfg) !== pgcTemplateProj(after);
+}
+/* A template body read back from a config. Entities become inputs unless keepEntities. */
+function pgcTemplateFromCfg(cfg, keepEntities) {
+  const config = {};
+  PGC_TEMPLATE_KEYS.forEach((k) => { if (!pgcEmptyV(cfg[k]) || k === "digitals") config[k] = pgcClone(cfg[k]); });
+  if (config.digitals === undefined && !Array.isArray(cfg.digitals)) config.digitals = pgcClone(pgcDigitalList(cfg)); else if (config.digitals === undefined) delete config.digitals;
+  Object.keys(PGC_THEME_ITEM_KEYS).forEach((k) => { (config[k] || []).forEach((it) => PGC_THEME_ITEM_KEYS[k].forEach((x) => delete it[x])); });
+  PGC_DIGITAL_LEGACY_KEYS.forEach((k) => delete config[k]);
+  if (hasVal(cfg.name)) config.name = cfg.name;
+  const inputs = [{ key: "entity", label: "Entity", required: true }];
+  if (!keepEntities) {
+    const map = new Map(), tok = (e) => { if (e === cfg.entity) return "$input:entity"; if (!map.has(e)) map.set(e, "entity" + (map.size + 2)); return "$input:" + map.get(e); };
+    const walk = (v) => {
+      if (Array.isArray(v)) return v.forEach(walk);
+      if (v && typeof v === "object") Object.keys(v).forEach((k) => { if (k === "entity" && typeof v[k] === "string" && PGC_RE_ENT.test(v[k])) v[k] = tok(v[k]); else walk(v[k]); });
+    };
+    walk(config);
+    map.forEach((key, ent) => inputs.push({ key, label: `Extra entity (${ent})`, required: false }));
+  }
+  return { inputs, config };
+}
+
+/* ================================================================ PACKS, STORAGE, LOADING (editor only) */
+const PGC_REG = { yaml: null, packs: new Map(), items: new Map(), user: { schema: 1, packs: [], items: {} }, loaded: null, mode: null };
+const pgcYaml = () => (PGC_REG.yaml ||= import(new URL("lib/js-yaml.mjs", import.meta.url).href).then((m) => m.default || m));
+async function pgcFetchText(url) {
+  try { const r = await fetch(url, { cache: "no-cache" }); if (!r.ok) return null; const t = await r.text(); return t.length > 262144 ? null : t; } catch (_) { return null; }
+}
+async function pgcParseYaml(text) {
+  try { const y = await pgcYaml(); const o = y.load(text, { schema: y.CORE_SCHEMA }); return o && typeof o === "object" ? o : null; } catch (_) { return null; }
+}
+async function pgcFetchYaml(url) { const t = await pgcFetchText(url); return t === null ? null : pgcParseYaml(t); }
+function pgcVerOk(req) {
+  const m = String(req || "").match(/^>=\s*(\d+)\.(\d+)\.(\d+)/); if (!m) return true;
+  const v = PGC_VERSION.match(/^(\d+)\.(\d+)\.(\d+)/) || [0, 0, 0, 0];
+  for (let i = 1; i <= 3; i++) { if (+v[i] > +m[i]) return true; if (+v[i] < +m[i]) return false; }
+  return true;
+}
+function pgcCleanPack(raw, id) {
+  if (!raw || raw.kind !== "pack" || raw.id !== id || !(raw.schema <= PGC_SCHEMA_NO)) return null;
+  const m = { id, name: String(raw.name || id).slice(0, 40), version: String(raw.version || ""), author: String(raw.author || ""), description: String(raw.description || "").slice(0, 200),
+    license: String(raw.license || ""), preview: typeof raw.preview === "string" && !/\.\.|["'()\\]/.test(raw.preview) ? raw.preview : "", assets: {}, fonts: { css: "", families: [] }, themes: [], templates: [], gauges: [] };
+  PGC_IMG_FOLDERS.forEach((f) => {
+    m.assets[f] = (Array.isArray(raw.assets?.[f]) ? raw.assets[f] : []).filter((a) => a && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(String(a.file)))
+      .map((a) => ({ file: a.file, name: String(a.name || a.file.replace(/\.[a-z0-9]+$/i, "").replace(/^[A-Za-z0-9]+_[A-Za-z]+_/, "").replace(/-/g, " ")).slice(0, 50), tags: Array.isArray(a.tags) ? a.tags.map(String).slice(0, 8) : [] }));
+  });
+  if (raw.fonts && typeof raw.fonts.css === "string" && /^fonts\/[A-Za-z0-9._-]+\.css$/.test(raw.fonts.css)) m.fonts.css = raw.fonts.css;
+  m.fonts.families = (Array.isArray(raw.fonts?.families) ? raw.fonts.families : []).map((f) => String(f.family || "")).filter((f) => PGC_RE_FONT.test(f));
+  ["themes", "templates", "gauges"].forEach((k) => { m[k] = (Array.isArray(raw[k]) ? raw[k] : []).filter((x) => typeof x === "string" && PGC_RE_ID.test(x)); });
+  return m;
+}
+async function pgcLoadPack(id) {
+  if (!/^[a-z][a-z0-9]{1,15}$/.test(id)) return null;
+  const roots = [PGC_USER_ROOT]; if (PGC_ROOT !== PGC_USER_ROOT) roots.push(PGC_ROOT);
+  for (const root of roots) {
+    const m = pgcCleanPack(await pgcFetchYaml(`${root}packs/${id}.pack.yaml`), id);
+    if (m) {
+      if (id !== "core" && root !== PGC_USER_ROOT) {      // packs are somewhere else than the card expected: remember it
+        try { const path = new URL(root, location.href).pathname; if (/^\/(local|hacsfiles)\//.test(path)) { localStorage.setItem("pgc_pack_root", path); PGC_USER_ROOT = path; } } catch (_) { /* ignore */ }
+      }
+      return { manifest: m, root };
+    }
+  }
+  return null;
+}
+/* ---- the store for user items and registered packs: HA frontend storage, with localStorage as a last resort ---- */
+const pgcBlankStore = () => ({ schema: 1, packs: [], items: {} });
+function pgcNormStore(v) {
+  if (!v || typeof v !== "object") return pgcBlankStore();
+  return { schema: 1, packs: Array.isArray(v.packs) ? v.packs.filter((x) => /^[a-z][a-z0-9]{1,15}$/.test(String(x))) : [], items: v.items && typeof v.items === "object" ? v.items : {} };
+}
+async function pgcStoreRead(hass) {
+  for (const [mode, type] of [["system", "frontend/get_system_data"], ["user", "frontend/get_user_data"]]) {
+    try { const r = await hass.callWS({ type, key: PGC_STORE_KEY }); PGC_REG.mode = mode; return pgcNormStore(r?.value); } catch (_) { /* try the next one */ }
+  }
+  PGC_REG.mode = "local";
+  try { return pgcNormStore(JSON.parse(localStorage.getItem(PGC_STORE_KEY))); } catch (_) { return pgcBlankStore(); }
+}
+async function pgcStoreWrite(hass, data) {
+  const types = { system: "frontend/set_system_data", user: "frontend/set_user_data" };
+  for (const mode of PGC_REG.mode === "system" ? ["system", "user"] : PGC_REG.mode === "user" ? ["user"] : []) {
+    try { await hass.callWS({ type: types[mode], key: PGC_STORE_KEY, value: data }); PGC_REG.mode = mode; return mode; } catch (_) { /* fall through */ }
+  }
+  localStorage.setItem(PGC_STORE_KEY, JSON.stringify(data)); PGC_REG.mode = "local"; return "local";
+}
+/* ---- the registry: every pack, theme, template and gauge the card can see ---- */
+function pgcRegistry(hass, force) {
+  if (PGC_REG.loaded && !force) return PGC_REG.loaded;
+  return (PGC_REG.loaded = (async () => {
+    PGC_REG.user = await pgcStoreRead(hass);
+    const ids = new Set([...PGC_OFFICIAL_PACKS, ...PGC_REG.user.packs]);
+    const t = await pgcFetchText(`${PGC_USER_ROOT}packs/index.json`);
+    try { (JSON.parse(t)?.packs || []).forEach((x) => /^[a-z][a-z0-9]{1,15}$/.test(String(x)) && ids.add(x)); } catch (_) { /* no index file */ }
+    PGC_REG.packs.clear(); PGC_REG.items.clear();
+    await Promise.all([...ids].map(async (id) => {
+      const p = await pgcLoadPack(id); if (!p) return;
+      PGC_REG.packs.set(id, p);
+      await Promise.all(["theme", "template", "gauge"].flatMap((kind) => p.manifest[kind + "s"].map(async (iid) => {
+        const it = pgcCleanItem(await pgcFetchYaml(`${p.root}${kind}s/${iid}.${kind}.yaml`), kind);
+        if (it && it.id === iid) PGC_REG.items.set(iid, { ...it, source: "pack", needsNewer: !pgcVerOk(it.requires?.card) });
+      })));
+    }));
+    Object.values(PGC_REG.user.items).forEach((raw) => { const it = pgcCleanItem(raw, raw?.kind); if (it) PGC_REG.items.set(it.id, { ...it, source: "user" }); });
+    return PGC_REG;
+  })());
+}
+function pgcItems(kind) {
+  const order = (it) => (it.source === "user" ? "~" : it.pack === "core" ? "!" : it.pack);
+  return [...PGC_REG.items.values()].filter((i) => i.kind === kind).sort((a, b) => order(a).localeCompare(order(b)) || a.name.localeCompare(b.name));
+}
+/* packs an item needs that are not installed (pictures from another pack) */
+const pgcMissingPacks = (it) => (it.requires?.packs || []).filter((id) => !PGC_REG.packs.has(id));
+const pgcPackName = (it) => (it.source === "user" ? "My items" : PGC_REG.packs.get(it.pack)?.manifest.name || it.pack);
+function pgcAssets(folder) {
+  const out = [];
+  PGC_REG.packs.forEach((p, id) => (p.manifest.assets[folder] || []).forEach((a) => out.push({
+    pack: id, packName: p.manifest.name, file: a.file, name: a.name, tags: a.tags, ref: `pgc:${folder}/${a.file}`,
+    url: pgcAsset(`pgc:${folder}/${a.file}`), thumb: `${p.root}packs/${id}/thumbs/${folder}/${a.file.replace(/\.[a-z0-9]+$/i, "")}.webp`,
+  })));
+  return out;
+}
+/* font families a pack's stylesheet provides, keyed by the stylesheet's URL */
+function pgcPackFontCss() {
+  const out = new Map();
+  PGC_REG.packs.forEach((p) => { if (p.manifest.fonts.css) out.set(new URL(p.manifest.fonts.css, p.root).href, p.manifest.fonts.families); });
+  return out;
+}
+/* ---- user items ---- */
+const pgcSlug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "item";
+const pgcRand = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => "abcdefghijklmnopqrstuvwxyz0123456789"[b % 36]).join("");
+const pgcNewId = (name) => `user_${pgcSlug(name)}-${pgcRand()}`;
+function pgcPlain(it) { const o = { ...it }; delete o.source; delete o.needsNewer; delete o.root; return o; }
+async function pgcUserPut(hass, raw) {
+  const it = pgcCleanItem(raw, raw.kind); if (!it) throw new Error("This item is not valid");
+  PGC_REG.user.items[it.id] = pgcPlain(it);
+  await pgcStoreWrite(hass, PGC_REG.user);
+  PGC_REG.items.set(it.id, { ...it, source: "user" });
+  return it;
+}
+async function pgcUserDelete(hass, id) {
+  delete PGC_REG.user.items[id]; await pgcStoreWrite(hass, PGC_REG.user); PGC_REG.items.delete(id);
+}
+async function pgcPackAdd(hass, id) {
+  id = String(id).trim().toLowerCase();
+  const p = await pgcLoadPack(id); if (!p) return false;
+  if (!PGC_REG.user.packs.includes(id) && !PGC_OFFICIAL_PACKS.includes(id)) { PGC_REG.user.packs.push(id); await pgcStoreWrite(hass, PGC_REG.user); }
+  PGC_REG.loaded = null; return true;
+}
+async function pgcPackRemove(hass, id) {
+  PGC_REG.user.packs = PGC_REG.user.packs.filter((x) => x !== id); await pgcStoreWrite(hass, PGC_REG.user); PGC_REG.loaded = null;
+}
+async function pgcExportYaml(it) { const y = await pgcYaml(); return y.dump(pgcPlain(it), { noRefs: true, lineWidth: 110, sortKeys: false }); }
+/* Import a pasted or uploaded yaml file as a new user item (it always gets a new id). */
+async function pgcImportText(hass, text) {
+  const raw = await pgcParseYaml(text);
+  if (!raw || !["theme", "template", "gauge"].includes(raw.kind)) throw new Error("This is not a Photoreal theme, template or gauge file");
+  const name = String(raw.name || "Imported").slice(0, 40), id = pgcNewId(name);
+  const it = pgcCleanItem({ ...raw, id, pack: "user", name, derived_from: typeof raw.id === "string" ? raw.id : undefined, created: new Date().toISOString().slice(0, 10) }, raw.kind);
+  if (!it) throw new Error("The file has errors and could not be imported");
+  return pgcUserPut(hass, it);
+}
+/* the nearest-looking device_class/domain hint for ranking templates */
+function pgcSuggestScore(tpl, stateObj) {
+  if (!tpl.suggest || !stateObj) return 0;
+  const s = tpl.suggest, dc = stateObj.attributes?.device_class, un = stateObj.attributes?.unit_of_measurement, dom = String(stateObj.entity_id || "").split(".")[0];
+  return (s.device_class?.includes(dc) ? 2 : 0) + (s.unit?.includes(un) ? 1 : 0) + (s.domain?.includes(dom) ? 1 : 0);
+}
+if (globalThis.__PGC_TEST__) globalThis.PGC_ENGINE = { pgcApplyTheme, pgcThemeModified, pgcThemeFromCfg, pgcApplyTemplate, pgcApplyGauge, pgcTemplateModified, pgcTemplateFromCfg, pgcCleanItem, pgcCleanTheme,
+  pgcRegistry, pgcItems, pgcAssets, pgcUserPut, pgcUserDelete, pgcPackAdd, pgcImportText, pgcExportYaml, pgcSubst, pgcAsset, pgcToRef, pgcMissingPacks, PGC_TEMPLATE_KEYS, PGC_REG, pgcOkImg, pgcNewId };
 /* ================================================================ EDITOR */
 /* README.md is loaded from the same folder as this file */
 const PGC_HELP_URL = new URL("README.md", import.meta.url).href;
@@ -927,6 +1353,9 @@ const FONT_CHOICES = [
 const num = (name, min, max, step = 1, slider = false, unit) =>
   ({ name, selector: { number: { min, max, step, mode: slider ? "slider" : "box", ...(unit ? { unit_of_measurement: unit } : {}) } } });
 const txt = (name) => ({ name, selector: { text: {} } });
+/* image field with a Browse button: the folder says which pack images it lists */
+const img = (name, imgFolder) => ({ name, imgFolder, selector: { text: {} } });
+const styles3 = (pre = "") => grid(bool(pre + "bold"), bool(pre + "italic"), bool(pre + "underline"));
 const bool = (name) => ({ name, selector: { boolean: {} } });
 /* `show(obj)` hides a field until it applies; the editor strips it before handing the schema to ha-form. */
 const showIf = (field, show) => ({ ...field, show });
@@ -966,13 +1395,13 @@ const PGC_SCHEMA = [
   grp("Backgrounds (square & circle)", [
     num("gauge_margin", 0, 20, 0.5), num("square_radius", 0, 50, 0.5),
     col("square_color"), num("square_color_opacity", 0, 1, 0.05, true),
-    txt("square_image"), num("square_image_opacity", 0, 1, 0.05, true),
+    img("square_image", "Square_backgrounds"), num("square_image_opacity", 0, 1, 0.05, true),
     col("circle_color"), num("circle_color_opacity", 0, 1, 0.05, true),
-    txt("circle_image"), num("circle_image_opacity", 0, 1, 0.05, true),
+    img("circle_image", "Dial_faces"), num("circle_image_opacity", 0, 1, 0.05, true),
     bool("face_shading"), bool("shadow"), bool("glass"), num("glass_intensity", 0, 100, 1, true),
   ]),
   grp("Gauge outer ring", [
-    col("border_color"), num("border_thickness", 0, 15, 0.25), txt("border_image"), bool("border_metallic"),
+    col("border_color"), num("border_thickness", 0, 15, 0.25), img("border_image", "Outer_rings"), bool("border_metallic"),
     col("border_outer_glow_color"), num("border_outer_glow_intensity", 0, 100, 1, true),
     col("border_inner_glow_color"), num("border_inner_glow_intensity", 0, 100, 1, true),
   ]),
@@ -981,7 +1410,7 @@ const PGC_SCHEMA = [
     col("major_tick_color"), col("minor_tick_color"),
     num("major_tick_length", 1, 30, 0.5), num("minor_tick_length", 1, 30, 0.5),
     num("major_tick_width", 0.2, 6, 0.1), num("minor_tick_width", 0.2, 6, 0.1),
-    bool("show_numbers"), col("number_color"), num("number_size", 2, 20, 0.5), font("number_font"), num("number_decimals", 0, 4),
+    bool("show_numbers"), col("number_color"), num("number_size", 2, 20, 0.5), font("number_font"), styles3("number_"), num("number_decimals", 0, 4),
   ]),
   grp("Min/max markers", [
     bool("show_min_max"), col("min_marker_color"), col("max_marker_color"),
@@ -993,14 +1422,14 @@ const PGC_SCHEMA = [
       { value: "arrow", label: "Arrow" }, { value: "image", label: "Image" }]),
     num("needle_length", 20, 100, 1), num("needle_width", 0.5, 20, 0.25), num("needle_tail", 0, 50, 1),
     col("needle_color"), num("needle_opacity", 0, 1, 0.05, true),
-    txt("needle_image"), num("needle_image_width", 2, 80, 1),
+    img("needle_image", "Needles"), num("needle_image_width", 2, 80, 1),
     bool("needle_shadow"), num("needle_animation_ms", 0, 5000, 50),
     bool("needle_tip_glow"), num("needle_tip_length", 2, 60, 1), num("needle_tip_offset", 0, 40, 1),
     col("needle_tip_color"), num("needle_tip_opacity", 0, 1, 0.05, true),
     bool("needle_tip_use_threshold"), num("needle_tip_glow_intensity", 0, 100, 1, true),
   ]),
   grp("Center hub", [
-    num("hub_size", 1, 30, 0.5), col("hub_color"), txt("hub_image"), num("hub_opacity", 0, 1, 0.05, true),
+    num("hub_size", 1, 30, 0.5), col("hub_color"), img("hub_image", "Hubs"), num("hub_opacity", 0, 1, 0.05, true),
   ]),
   grp("Custom fonts (YAML lists)", [obj("font_urls"), obj("custom_fonts")]),
 ];
@@ -1015,8 +1444,8 @@ const THR_STYLE_SCHEMA = [
 const THR_SCHEMA = [grid(any("from"), any("to")), col("color")];
 const LABEL_SCHEMA = [
   txt("text"), grid(pct("x"), pct("y")), grid(num("size", 1, 30, 0.25), num("rotate", -180, 180, 1)),
-  col("color"), font("font"), sel("weight", [{ value: "normal", label: "Normal" }, { value: "bold", label: "Bold" }]),
-  col("bg_color"), num("bg_opacity", 0, 1, 0.05, true), txt("bg_image"),
+  col("color"), font("font"), styles3(),
+  col("bg_color"), num("bg_opacity", 0, 1, 0.05, true), img("bg_image", "Label_and_display_backgrounds"),
   grid(num("padding", 0, 10, 0.1), num("radius", 0, 10, 0.1)),
   bool("use_gauge_entity"), showIf(ent("entity"), ownEnt), txt("attribute"),
 ];
@@ -1051,19 +1480,19 @@ const CCOND_SCHEMA = [
     { value: "equals", label: "Equals (=)" }, { value: "not_equals", label: "Not equals (≠)" },
   ]), txt("value")),
   section("Circle background"),
-  txt("image"), col("color"),
+  img("image", "Dial_faces"), col("color"),
 ];
 const DIGITAL_SCHEMA = [
   bool("use_gauge_entity"), showIf(ent("entity"), ownEnt), txt("attribute"), txt("unit"),
   grid(pct("x"), pct("y")), num("width", 5, 80, 0.5),
-  font("font"), num("font_size", 1, 30, 0.25), col("color"), bool("glow"),
-  col("bg_color"), num("bg_opacity", 0, 1, 0.05, true), txt("bg_image"),
+  font("font"), styles3(), num("font_size", 1, 30, 0.25), col("color"), bool("glow"),
+  col("bg_color"), num("bg_opacity", 0, 1, 0.05, true), img("bg_image", "Label_and_display_backgrounds"),
   bool("show_unit"), num("decimals", 0, 6), txt("no_data_text"),
 ];
 
 /* What the editor shows for a field that is not set yet (matches what the card does). */
 const THR_ITEM_DEFAULTS = { color: "#43a047" };
-const LABEL_ITEM_DEFAULTS = { x: 50, y: 50, size: 5, rotate: 0, weight: "normal", padding: 0.6, radius: 0.8, bg_opacity: 1, color: "#ffffff", bg_color: "#000000" };
+const LABEL_ITEM_DEFAULTS = { x: 50, y: 50, size: 5, rotate: 0, padding: 0.6, radius: 0.8, bg_opacity: 1, color: "#ffffff", bg_color: "#000000" };
 const LED_DEFAULT_OFF = "#3a0a10";
 const LED_ITEM_DEFAULTS = { x: 50, y: 85, size: 3, default_color: LED_DEFAULT_OFF };
 const CCOND_ITEM_DEFAULTS = { operator: "above", color: "#1b1f24" };
@@ -1088,6 +1517,7 @@ const PGC_LABELS = {
   x: "X position", y: "Y position",
   bg_color: "Background color", bg_opacity: "Background opacity", bg_image: "Background image URL",
   min_marker_value: "Min marker (fixed value)", max_marker_value: "Max marker (fixed value)",
+  number_bold: "Bold", number_italic: "Italic", number_underline: "Underline", bold: "Bold", italic: "Italic", underline: "Underline",
   needle_animation_ms: "Needle animation (ms)", square_image: "Square image URL", circle_image: "Circle image URL",
   needle_image: "Needle image URL", hub_image: "Hub image URL", color_off: "Color when off",
   no_data_text: "Text when no data", use_gauge_entity: "Use gauge entity",
@@ -1159,6 +1589,7 @@ const PGC_HELP = {
     number_color: "Color of the scale numbers.",
     number_size: "Size of the scale numbers. Try values between 7 and 12.",
     number_font: "Font family for the scale numbers. You can type any font that is installed or loaded under Custom fonts.",
+    number_bold: "Draw the scale numbers in bold.", number_italic: "Draw the scale numbers in italic.", number_underline: "Underline the scale numbers.",
     number_decimals: "Number of digits after the decimal point in the scale numbers.",
     show_min_max: "Show small triangles on the scale marking the lowest and highest values.",
     min_marker_color: "Color of the min marker triangle.",
@@ -1208,7 +1639,7 @@ const PGC_HELP = {
     rotate: "Rotates the label in degrees. Positive values turn it clockwise.",
     color: "Text color.",
     font: "Font family. Leave empty to use the scale number font.",
-    weight: "Normal or bold text.",
+    bold: "Draw the text in bold.", italic: "Draw the text in italic.", underline: "Underline the text.",
     bg_color: "Color of a box behind the text. Leave unset for no box.",
     bg_opacity: "Opacity of the box behind the text. Applies to both the box color and the background image.",
     bg_image: "URL of an image used as the label's background.",
@@ -1265,6 +1696,7 @@ const PGC_HELP = {
     glow: "Adds a soft glow around the digits, like an LED display.",
     bg_color: "Color of the display's background box.",
     bg_opacity: "Opacity of the background box color and image. 0 hides the box.",
+    bold: "Draw the digits in bold.", italic: "Draw the digits in italic.", underline: "Underline the digits.",
     bg_image: "URL of an image for the display's background.",
     show_unit: "Show the unit after the number.",
     decimals: "Digits after the decimal point. If empty, the gauge's Decimals setting is used.",
@@ -1283,7 +1715,7 @@ class PhotorealGaugeCardEditor extends HTMLElement {
     if (this._built && JSON.stringify(config) === this._lastEmit) return;
     this._build();
   }
-  set hass(h) { this._hass = h; this.querySelectorAll("ha-form").forEach((f) => (f.hass = h)); }
+  set hass(h) { this._hass = h; this.querySelectorAll("ha-form").forEach((f) => (f.hass = h)); this._onHass?.(); }
 
   /* colour helpers: ha-form's colour picker speaks [r,g,b]; the config stores CSS strings */
   _pick(src) {
@@ -1300,6 +1732,7 @@ class PhotorealGaugeCardEditor extends HTMLElement {
     });
     this._config = cfg;
     this._lastEmit = JSON.stringify(cfg);
+    this._presetsRefresh?.();
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: cfg }, bubbles: true, composed: true }));
   }
 
@@ -1312,6 +1745,7 @@ class PhotorealGaugeCardEditor extends HTMLElement {
     ctx.get = (f) => {
       const o = getObj() || {}, v = o[f.name];
       if (f.name === "use_gauge_entity") return v ?? !hasVal(o.entity);
+      if (f.name === "bold" && v === undefined) return o.weight === "bold";           // older labels used weight: bold
       if (f.selector.color_rgb) return this._pick(hasVal(v) ? v : defaults[f.name] ?? "#000000");
       let out = empty(v) ? defaults[f.name] : v;
       if (PGC_ACTION_KEYS.includes(f.name)) out = normAction(out, PGC_DEFAULTS[f.name]);
@@ -1325,6 +1759,10 @@ class PhotorealGaugeCardEditor extends HTMLElement {
       } else if (f.selector.color_rgb) {
         if (!Array.isArray(v) || same(v.slice(0, 3), cur)) return;     // untouched
         o[name] = this._hex(v);
+      } else if (/(^|_)(bold|italic|underline)$/.test(name)) {
+        if (!!v === !!cur) return;
+        if (v) o[name] = true; else delete o[name];
+        if (name === "bold") delete o.weight;
       } else {
         if (same(v, cur)) return;
         if (empty(v)) delete o[name];
@@ -1356,7 +1794,7 @@ class PhotorealGaugeCardEditor extends HTMLElement {
     const form = document.createElement("ha-form");
     const cur = ctx.get(f);
     form.computeLabel = () => label;
-    const { show, fontOpts, ...fs } = f;
+    const { show, fontOpts, imgFolder, ...fs } = f;
     if (fontOpts) {
       const known = new Set(fs.selector.select.options.flatMap((o) => [o.value, o.label]));
       const extra = pgcConfigFonts(this._config).filter((n) => !known.has(n)).map((n) => ({ value: n, label: n }));
@@ -1369,6 +1807,13 @@ class PhotorealGaugeCardEditor extends HTMLElement {
       ctx.set(f, ev.detail.value?.[f.name]);
     });
     row.appendChild(form);
+    if (imgFolder && this._browse) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "pgc-ib"; b.title = "Browse images"; b.setAttribute("aria-label", `Browse images for ${label}`);
+      const bi = document.createElement("ha-icon"); bi.setAttribute("icon", "mdi:image-search-outline"); b.appendChild(bi);
+      b.addEventListener("click", () => this._browse(imgFolder, ctx.get(f) || "", (ref) => { form.data = { [f.name]: ref }; ctx.set(f, ref); }));
+      row.appendChild(b);
+    }
 
     const key = `${ctx.id}.${f.name}`, uid = `pgc-h${++_pgcUid}`;
     const box = document.createElement("div");
@@ -1502,6 +1947,7 @@ class PhotorealGaugeCardEditor extends HTMLElement {
     const ver = document.createElement("span"); ver.className = "pgc-ver"; ver.textContent = `Photoreal Gauge Card v${PGC_VERSION}`;
     bar.append(help, ver);
     this.appendChild(bar);
+    if (this._presetsBar) this.appendChild(this._presetsBar());
 
     /* main settings */
     const mainCtx = this._ctx({
@@ -1835,3 +2281,305 @@ window.customCards.push({
   preview: true,
 });
 console.info(`%c PHOTOREAL-GAUGE-CARD %c v${PGC_VERSION} `, "background:#b9bdc4;color:#000", "background:#1b1f24;color:#7CFC00");
+
+/* ================================================================ EDITOR: themes, templates, gauges, image browser */
+(() => {
+  const P = PhotorealGaugeCardEditor.prototype;
+  const el = (tag, props = {}, kids = []) => {
+    const e = document.createElement(tag);
+    Object.entries(props).forEach(([k, v]) => { if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else if (k in e && k !== "style") e[k] = v; else e.setAttribute(k, v); });
+    kids.forEach((c) => e.appendChild(typeof c === "string" ? document.createTextNode(c) : c));
+    return e;
+  };
+  const btn = (text, onClick, opts = {}) => { const b = el("ha-button", { text, ...(opts.outlined ? { appearance: "outlined" } : {}) }); b.addEventListener("click", onClick); if (opts.title) b.title = opts.title; if (opts.disabled) b.disabled = true; return b; };
+  const CSS = `
+    .pgc-presets{border:1px solid var(--divider-color);border-radius:12px;padding:8px 12px;margin:0 0 12px}
+    .pgc-prow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:2px 0}
+    .pgc-pkind{flex:none;width:130px;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--secondary-text-color)}
+    .pgc-pname{flex:1;min-width:120px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pgc-pname small{font-weight:400;color:var(--secondary-text-color)}
+    .pgc-mod{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:10px;font-size:11px;background:var(--warning-color,#ffa726);color:#000}
+    .pgc-pmsg{font-size:12px;color:var(--secondary-text-color);min-height:16px;margin-top:2px}
+    .pgc-pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:8px 0}
+    .pgc-pcard{border:1px solid var(--divider-color);border-radius:10px;padding:6px;cursor:pointer;background:var(--secondary-background-color);text-align:center;color:inherit;font:inherit}
+    .pgc-pcard:hover,.pgc-pcard:focus-visible{border-color:var(--primary-color);outline:none}
+    .pgc-pcard .pv{pointer-events:none;border-radius:8px;overflow:hidden;min-height:90px}
+    .pgc-pcard img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:8px;background:#0003}
+    .pgc-pcard b{display:block;font-size:13px;margin-top:4px;font-weight:500}.pgc-pcard small{display:block;font-size:11px;color:var(--secondary-text-color)}
+    .pgc-dtools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0}
+    .pgc-dtools input[type=text],.pgc-dtools input[type=search],.pgc-form input[type=text]{flex:1;min-width:140px;padding:8px;border-radius:8px;border:1px solid var(--divider-color);background:var(--card-background-color);color:inherit;font:inherit}
+    .pgc-form textarea{width:100%;min-height:200px;box-sizing:border-box;font-family:monospace;font-size:12px;background:var(--card-background-color);color:inherit;border:1px solid var(--divider-color);border-radius:8px;padding:8px}
+    .pgc-lrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider-color)}.pgc-lrow span{flex:1;min-width:0}
+    .pgc-warn{padding:8px 12px;border-radius:8px;background:var(--secondary-background-color);font-size:13px;margin:8px 0}`;
+
+  P._pgcDialog = function (title) {
+    const dlg = el("dialog", { class: "pgc-dialog", "aria-label": title });
+    const x = el("button", { type: "button", class: "pgc-dclose", "aria-label": "Close" }, [el("ha-icon", { icon: "mdi:close" })]);
+    const body = el("div", { class: "pgc-dbody", tabindex: "0" });
+    dlg.append(el("div", { class: "pgc-dhead" }, [el("h2", { text: title }), x]), body);
+    x.addEventListener("click", () => dlg.close());
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+    dlg.addEventListener("keydown", (e) => e.stopPropagation());
+    dlg.addEventListener("close", () => dlg.remove());
+    this.appendChild(dlg);
+    dlg.showModal?.();
+    return { dlg, body };
+  };
+
+  /* ---- image browser ---- */
+  P._browse = async function (folder, current, onPick) {
+    const { dlg, body } = this._pgcDialog(`Choose image - ${folder.replace(/_/g, " ")}`);
+    body.textContent = "Loading...";
+    await pgcRegistry(this._hass);
+    const all = pgcAssets(folder), grid = el("div", { class: "pgc-pgrid" });
+    const search = el("input", { type: "search", placeholder: "Search by name or pack", "aria-label": "Search images" });
+    const packSel = this._packSelect([...new Map(all.map((a) => [a.pack, a.packName]))]);
+    const clear = btn("No image", () => { onPick(""); dlg.close(); }, { outlined: true });
+    body.replaceChildren(el("div", { class: "pgc-dtools" }, [packSel, search, clear]), grid);
+    packSel.addEventListener("change", () => draw());
+    const draw = () => {
+      const q = search.value.trim().toLowerCase();
+      grid.replaceChildren(...all.filter((a) => (!packSel.value || a.pack === packSel.value) && (!q || `${a.name} ${a.packName} ${a.tags.join(" ")}`.toLowerCase().includes(q))).map((a) => {
+        const im = el("img", { src: a.thumb, alt: a.name, loading: "lazy" });
+        im.addEventListener("error", () => { if (im.src !== a.url && !im.dataset.f) { im.dataset.f = 1; im.src = a.url; } });
+        const c = el("button", { type: "button", class: "pgc-pcard", title: a.ref }, [im, el("b", { text: a.name }), el("small", { text: a.packName })]);
+        if (current === a.ref || current === a.url) c.style.borderColor = "var(--primary-color)";
+        c.addEventListener("click", () => { onPick(a.ref); dlg.close(); });
+        return c;
+      }));
+      if (!grid.children.length) grid.textContent = all.length ? "No images match." : "No images found. Add a pack in Manage, or type a path in the field.";
+    };
+    search.addEventListener("input", draw); draw();
+  };
+
+  P._packSelect = function (packs) {
+    const s = el("select", { "aria-label": "Pack" }, [el("option", { value: "", text: "All packs" }), ...packs.map(([id, name]) => el("option", { value: id, text: name }))]);
+    s.style.cssText = "padding:8px;border-radius:8px;border:1px solid var(--divider-color);background:var(--card-background-color);color:inherit;font:inherit";
+    return s;
+  };
+  /* ---- the bar ---- */
+  const KIND_KEY = { theme: "pgc_theme", template: "pgc_template", gauge: "pgc_template" };
+  const KIND_NAME = { theme: "Photoreal theme", template: "Photoreal template", gauge: "Photoreal gauge" };
+  P._applyCfg = function (cfg, msg) {
+    (this._undo ||= []).push(JSON.stringify(this._config));
+    if (this._undo.length > 20) this._undo.shift();
+    this._config = cfg; this._emit(); this._build();
+    if (msg) { this._pmsg = msg; this._presetsRefresh?.(); }
+  };
+  P._cur = function (kind) {
+    const id = this._config[KIND_KEY[kind]], it = id ? PGC_REG.items.get(id) : null;
+    if (kind === "theme") return { id, it };
+    return { id, it: it && it.kind === kind ? it : null, other: it && it.kind !== kind };
+  };
+  P._modified = function (kind, it) {
+    try { return kind === "theme" ? pgcThemeModified(this._config, it) : pgcTemplateModified(this._config, it); } catch (_) { return false; }
+  };
+  P._preview = function (cfg) {
+    const d = el("div", { class: "pv" });
+    try {
+      const c = document.createElement("photoreal-gauge-card");
+      c.setConfig({ ...cfg, needle_animation_ms: 0, tap_action: { action: "none" }, hold_action: { action: "none" }, double_tap_action: { action: "none" } });
+      c.hass = this._hass; d.appendChild(c);
+    } catch (_) { d.textContent = "(no preview)"; }
+    return d;
+  };
+  P._inputsFor = function (it) {
+    const cfg = this._config, vals = { entity: cfg.entity, ...(cfg.pgc_inputs || {}) };
+    return { vals, list: it.inputs || [] };
+  };
+  P._applyItem = function (kind, it, inputs, colors) {
+    return kind === "theme" ? pgcApplyTheme(this._config, it, { colors }) : kind === "gauge" ? pgcApplyGauge(this._config, it, inputs) : pgcApplyTemplate(this._config, it, inputs);
+  };
+
+  P._choose = async function (kind) {
+    await pgcRegistry(this._hass);
+    const { dlg, body } = this._pgcDialog(`Choose a ${KIND_NAME[kind]}`);
+    const items = pgcItems(kind);
+    const stateObj = this._hass?.states?.[this._config.entity];
+    if (kind !== "theme") items.sort((a, b) => pgcSuggestScore(b, stateObj) - pgcSuggestScore(a, stateObj));
+    let colors = this._config.pgc_theme_colors !== false;
+    const tools = el("div", { class: "pgc-dtools" });
+    if (kind === "theme") {
+      const cb = el("input", { type: "checkbox", id: "pgc-ac", checked: colors });
+      cb.addEventListener("change", () => { colors = cb.checked; draw(); });
+      tools.append(cb, el("label", { for: "pgc-ac", text: "Apply the theme's colors (numbers, ticks, labels, displays)" }));
+    } else tools.append(el("span", { class: "pgc-note", text: kind === "gauge" ? "A complete gauge sets the look and the behavior. Your entity is kept." : "A template sets scale, thresholds, labels, displays and LEDs. Your current theme is kept." }));
+    const grid = el("div", { class: "pgc-pgrid" });
+    const packSel = this._packSelect([...new Map(items.map((i) => [i.source === "user" ? "user" : i.pack, pgcPackName(i)]))]);
+    packSel.addEventListener("change", () => draw());
+    tools.append(packSel);
+    body.append(tools, grid);
+    const draw = () => {
+      grid.replaceChildren(...items.filter((it) => !packSel.value || (it.source === "user" ? "user" : it.pack) === packSel.value).map((it) => {
+        const miss = pgcMissingPacks(it);
+        const c = el("button", { type: "button", class: "pgc-pcard", title: miss.length ? `Needs the ${miss.join(", ")} pack` : it.description || it.name }, [
+          el("b", { text: it.name }), el("small", { text: pgcPackName(it) + (it.needsNewer ? " - needs a newer card" : "") + (miss.length ? ` - needs ${miss.join(", ")} pack` : "") })]);
+        if (miss.length) c.style.opacity = ".55";
+        let out = null;
+        try {
+          if (kind === "theme") out = this._applyItem(kind, it, null, colors);
+          else { const { vals } = this._inputsFor(it); out = this._applyItem(kind, it, vals); }
+        } catch (_) { /* no preview */ }
+        if (out) c.prepend(this._preview(out));
+        c.addEventListener("click", async () => {
+          if (miss.length) { dlg.close(); this._pmsg = `"${it.name}" needs the ${miss.join(", ")} pack (pictures from it). Install it first.`; this._presetsRefresh?.(); return; }
+          if (kind === "theme") { dlg.close(); this._applyCfg(this._applyItem(kind, it, null, colors), `Applied theme "${it.name}".`); return; }
+          dlg.close(); this._askInputs(kind, it);
+        });
+        return c;
+      }));
+      if (!items.length) grid.textContent = "Nothing installed yet. Use Manage to add a pack or import a file.";
+    };
+    draw();
+  };
+
+  P._askInputs = function (kind, it) {
+    const { dlg, body } = this._pgcDialog(`${KIND_NAME[kind]}: ${it.name}`);
+    const { vals, list } = this._inputsFor(it), cur = { ...vals };
+    const msg = el("div", { class: "pgc-warn", text: kind === "gauge"
+      ? "This replaces the gauge's look and behavior (everything except the entity, name and actions). You can undo it."
+      : "This replaces the gauge's scale, thresholds, labels, displays and LEDs. Your theme is kept. You can undo it." });
+    const forms = el("div", { class: "pgc-form" });
+    const preview = el("div"), ok = btn("Apply", () => { dlg.close(); this._applyCfg(this._applyItem(kind, it, cur), `Applied ${kind} "${it.name}".`); });
+    const upd = () => {
+      ok.disabled = list.some((i) => i.required && !hasVal(cur[i.key]));
+      try { preview.replaceChildren(this._preview(this._applyItem(kind, it, cur))); } catch (_) { preview.replaceChildren(); }
+    };
+    list.forEach((i) => {
+      const f = el("ha-form"), sel = { entity: i.domain?.length || i.device_class ? { ...(i.domain?.length ? { domain: i.domain } : {}), ...(i.device_class ? { device_class: i.device_class } : {}) } : {} };
+      f.hass = this._hass; f.schema = [{ name: i.key, required: i.required, selector: { entity: sel.entity } }]; f.data = hasVal(cur[i.key]) ? { [i.key]: cur[i.key] } : {};
+      f.computeLabel = () => i.label + (i.required ? "" : " (optional)");
+      f.addEventListener("value-changed", (e) => { e.stopPropagation(); f.data = e.detail.value; cur[i.key] = e.detail.value?.[i.key] || undefined; upd(); });
+      forms.appendChild(f);
+    });
+    body.append(msg, forms, preview, el("div", { class: "row" }, [btn("Cancel", () => dlg.close(), { outlined: true }), ok]));
+    upd();
+  };
+
+  P._saveAs = function (kind, updateId) {
+    const cfg = this._config, existing = updateId ? PGC_REG.items.get(updateId) : null;
+    const { dlg, body } = this._pgcDialog(existing ? `Update "${existing.name}"` : `Save as new ${KIND_NAME[kind]}`);
+    const name = el("input", { type: "text", maxLength: 40, value: existing?.name || "", placeholder: "Name", "aria-label": "Name" });
+    const keep = el("input", { type: "checkbox", id: "pgc-ke" });
+    const err = el("div", { class: "pgc-pmsg" });
+    const rows = [el("div", { class: "pgc-form" }, [name])];
+    if (kind !== "theme") rows.push(el("div", { class: "pgc-dtools" }, [keep, el("label", { for: "pgc-ke", text: "Keep the entities in the file (otherwise they become inputs you choose when applying)" })]));
+    const go = btn(existing ? "Update" : "Save", async () => {
+      const nm = name.value.trim(); if (!nm) { err.textContent = "Enter a name."; return; }
+      try {
+        const id = existing ? existing.id : pgcNewId(nm), today = new Date().toISOString().slice(0, 10);
+        const base = { schema: PGC_SCHEMA_NO, kind, id, pack: "user", name: nm, description: existing?.description || "", tags: existing?.tags || [], created: existing?.created || today };
+        const lineage = existing ? existing.derived_from : this._config[KIND_KEY[kind]];
+        if (lineage && lineage !== id) base.derived_from = lineage;
+        let item;
+        if (kind === "theme") { const t = pgcThemeFromCfg(cfg); delete t.id; item = { ...base, ...t }; }
+        else {
+          const tb = pgcTemplateFromCfg(cfg, keep.checked);
+          item = { ...base, ...tb };
+          if (kind === "gauge") { const t = pgcThemeFromCfg(cfg); delete t.id; item.appearance = t; }
+        }
+        const saved = await pgcUserPut(this._hass, item);
+        dlg.close();
+        const next = { ...this._config, [KIND_KEY[kind]]: saved.id };
+        if (kind !== "theme" && !keep.checked) next.pgc_inputs = next.pgc_inputs;
+        if (kind === "gauge") delete next.pgc_theme;
+        this._applyCfg(next, `${existing ? "Updated" : "Saved"} "${saved.name}" in My items (${PGC_REG.mode} storage).`);
+      } catch (e) { err.textContent = e.message || "Could not save."; }
+    });
+    body.append(...rows, err, el("div", { class: "row" }, [btn("Cancel", () => dlg.close(), { outlined: true }), go]));
+    name.focus();
+  };
+
+  P._revert = function (kind, it) {
+    const cfg = this._config, inputs = { entity: cfg.entity, ...(cfg.pgc_inputs || {}) };
+    this._applyCfg(kind === "theme" ? pgcApplyTheme(cfg, it, { colors: cfg.pgc_theme_colors !== false }) : kind === "gauge" ? pgcApplyGauge(cfg, it, inputs) : pgcApplyTemplate(cfg, it, inputs), `Reverted to "${it.name}".`);
+  };
+
+  /* ---- manage: my items, packs, import/export ---- */
+  P._manage = async function () {
+    await pgcRegistry(this._hass);
+    const { dlg, body } = this._pgcDialog("Manage themes, templates, gauges and packs");
+    const root = el("div", { class: "pgc-form" }), diag = el("div", { class: "pgc-warn" });
+    body.append(diag, root);
+    (async () => {
+      const lines = [`Card loaded from ${PGC_ROOT}`, `Pack files read from ${PGC_USER_ROOT}`];
+      for (const [id, p] of PGC_REG.packs) {
+        const a = Object.values(p.manifest.assets).flat()[0]; if (!a) continue;
+        const f = Object.keys(p.manifest.assets).find((k) => p.manifest.assets[k].includes(a)), u = pgcAsset(`pgc:${f}/${a.file}`);
+        let ok = false; try { ok = (await fetch(u, { method: "HEAD", cache: "no-cache" })).ok; } catch (_) { /* offline */ }
+        lines.push(`${p.manifest.name}: images ${ok ? "found" : "NOT FOUND at " + u}`);
+      }
+      diag.replaceChildren(...lines.flatMap((l, i) => [...(i ? [el("br")] : []), l]));
+    })();
+    const status = el("div", { class: "pgc-pmsg" });
+    const render = () => {
+      const mine = [...PGC_REG.items.values()].filter((i) => i.source === "user");
+      root.replaceChildren(
+        el("h3", { text: `My items (${mine.length})` }),
+        ...mine.map((it) => el("div", { class: "pgc-lrow" }, [
+          el("span", { text: `${it.name} - ${it.kind}` }),
+          btn("Rename", async () => { const n = prompt("New name", it.name); if (n && n.trim()) { await pgcUserPut(this._hass, { ...pgcPlain(it), name: n.trim().slice(0, 40) }); render(); this._presetsRefresh?.(); } }),
+          btn("Export", async () => { const y = await pgcExportYaml(it); ta.value = y; ta.dataset.name = `${it.id}.${it.kind}.yaml`; ta.scrollIntoView(); status.textContent = "Copy the text below, or Download it."; }),
+          btn("Delete", async () => { if (confirm(`Delete "${it.name}"? Gauges already using it keep their settings.`)) { await pgcUserDelete(this._hass, it.id); render(); this._presetsRefresh?.(); } }),
+        ])),
+        el("h3", { text: "Installed packs" }),
+        ...[...PGC_REG.packs.values()].map((p) => el("div", { class: "pgc-lrow" }, [
+          el("span", { text: `${p.manifest.name} (${p.manifest.id}) ${p.manifest.version}${p.manifest.author ? " by " + p.manifest.author : ""}` }),
+          ...(PGC_OFFICIAL_PACKS.includes(p.manifest.id) ? [] : [btn("Remove", async () => { await pgcPackRemove(this._hass, p.manifest.id); await pgcRegistry(this._hass, true); render(); this._presetsRefresh?.(); })]),
+        ])),
+        el("div", { class: "pgc-dtools" }, [packId, btn("Add pack", async () => {
+          status.textContent = "Looking...";
+          const ok = await pgcPackAdd(this._hass, packId.value);
+          if (ok) { await pgcRegistry(this._hass, true); packId.value = ""; render(); this._presetsRefresh?.(); status.textContent = "Pack added."; }
+          else status.textContent = `Pack "${packId.value}" was not found. Unzip it into config/www/photoreal-gauge-card/ first (it needs packs/${packId.value || "id"}.pack.yaml).`;
+        })]),
+        el("h3", { text: "Import / export" }), ta,
+        el("div", { class: "pgc-dtools" }, [
+          btn("Import", async () => { try { const it = await pgcImportText(this._hass, ta.value); await pgcRegistry(this._hass, true); render(); this._presetsRefresh?.(); status.textContent = `Imported "${it.name}" as a ${it.kind}.`; } catch (e) { status.textContent = e.message; } }),
+          btn("Download", () => { if (!ta.value) return; const a = el("a", { href: URL.createObjectURL(new Blob([ta.value], { type: "text/yaml" })), download: ta.dataset.name || "item.yaml" }); a.click(); }),
+          fileIn,
+        ]),
+        status,
+      );
+    };
+    const packId = el("input", { type: "text", placeholder: "pack id, e.g. solar", "aria-label": "Pack id", maxLength: 16 });
+    const ta = el("textarea", { placeholder: "Paste a .theme.yaml, .template.yaml or .gauge.yaml here to import it, or press Export on an item.", "aria-label": "YAML" });
+    const fileIn = el("input", { type: "file", accept: ".yaml,.yml,text/yaml" });
+    fileIn.addEventListener("change", async () => { const f = fileIn.files[0]; if (f) ta.value = (await f.text()).slice(0, 65536); });
+    render();
+  };
+
+  /* ---- the bar itself ---- */
+  P._presetsBar = function () {
+    const box = el("div", { class: "pgc-presets" }, [el("style", { text: CSS })]);
+    const rows = el("div"), msg = el("div", { class: "pgc-pmsg", "aria-live": "polite" });
+    box.append(rows, msg);
+    const render = () => {
+      msg.textContent = this._pmsg || "";
+      const ready = PGC_REG.loaded && PGC_REG.items.size >= 0;
+      rows.replaceChildren(...["theme", "template", "gauge"].map((kind) => {
+        const { id, it, other } = this._cur(kind), mod = it ? this._modified(kind, it) : false;
+        let label = "Custom";
+        if (it) label = it.name; else if (id && !other) label = `${id}`;
+        const nm = el("span", { class: "pgc-pname" }, [label]);
+        if (id && !it && !other) nm.append(" ", el("small", { text: "(not installed)" }));
+        if (it && it.source === "user") nm.append(" ", el("small", { text: "My items" }));
+        if (mod) nm.append(el("span", { class: "pgc-mod", text: "Modified" }));
+        const r = el("div", { class: "pgc-prow" }, [el("span", { class: "pgc-pkind", text: KIND_NAME[kind] }), nm]);
+        r.append(btn("Choose", () => this._choose(kind)), btn("Save as", () => this._saveAs(kind), { title: `Save the current ${kind} settings as your own` }));
+        if (it && mod && it.source === "user") r.append(btn("Update", () => this._saveAs(kind, it.id), { title: "Overwrite this saved item with the current settings" }));
+        if (it && mod) r.append(btn("Revert", () => this._revert(kind, it), { title: "Put the settings back as the saved item defines them" }));
+        return r;
+      }), el("div", { class: "pgc-prow" }, [
+        btn("Undo", () => { const s = this._undo?.pop(); if (s) { this._config = JSON.parse(s); this._pmsg = "Undone."; this._emit(); this._build(); } }, { disabled: !this._undo?.length }),
+        btn("Manage / import", () => this._manage(), { title: "Your saved items, installed packs, import and export" }),
+      ]));
+      void ready;
+    };
+    this._presetsRefresh = () => { clearTimeout(this._prt); this._prt = setTimeout(() => this.isConnected && render(), 250); };
+    render();
+    const go = () => pgcRegistry(this._hass).then(render).catch(() => { this._pmsg = "Could not load packs."; render(); });
+    if (this._hass) go(); else this._onHass = () => { this._onHass = null; go(); };
+    return box;
+  };
+})();

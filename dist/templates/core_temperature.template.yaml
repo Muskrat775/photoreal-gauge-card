@@ -1,0 +1,54 @@
+schema: 1
+kind: template
+id: core_temperature
+pack: core
+name: Temperature
+description: 0-40 degrees C with cold, comfortable and hot zones.
+tags:
+- temperature
+requires:
+  card: '>=1.7.0'
+inputs:
+- key: entity
+  label: Temperature sensor
+  required: true
+  domain:
+  - sensor
+  device_class: temperature
+suggest:
+  device_class:
+  - temperature
+  unit:
+  - °C
+  domain:
+  - sensor
+config:
+  min: 0
+  max: 40
+  decimals: 1
+  start_angle: -135
+  end_angle: 135
+  major_ticks: 9
+  minor_ticks: 4
+  thresholds:
+  - from: 0
+    to: 15
+    color: '#42a5f5'
+  - from: 15
+    to: 28
+    color: '#43a047'
+  - from: 28
+    to: 40
+    color: '#e53935'
+  labels:
+  - text: '{name}'
+    x: 50
+    y: 62
+    size: 5
+  digitals:
+  - x: 50
+    y: 76
+    width: 30
+    font_size: 6.5
+  unit: °C
+  name: Temperature

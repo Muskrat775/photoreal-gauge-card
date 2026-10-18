@@ -1,0 +1,38 @@
+/* Photoreal Gauge Card fonts. All are open-license (SIL OFL 1.1) fonts from Google Fonts, trimmed to Latin characters.
+   Load them all with one line in the card YAML:  font_urls: [ /hacsfiles/photoreal-gauge-card/fonts/fonts.css ]
+   Browsers only download the fonts a gauge actually uses. */
+@font-face{font-family:"Orbitron";src:url("Orbitron/Orbitron.woff") format("woff");font-weight:400 900;font-style:normal;font-display:swap}
+@font-face{font-family:"Share Tech Mono";src:url("Share_Tech_Mono/ShareTechMono-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Cinzel";src:url("Cinzel/Cinzel.woff") format("woff");font-weight:400 900;font-style:normal;font-display:swap}
+@font-face{font-family:"Cinzel Decorative";src:url("Cinzel_Decorative/CinzelDecorative-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Cinzel Decorative";src:url("Cinzel_Decorative/CinzelDecorative-Bold.woff") format("woff");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Rajdhani";src:url("Rajdhani/Rajdhani-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Rajdhani";src:url("Rajdhani/Rajdhani-Medium.woff") format("woff");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"Rajdhani";src:url("Rajdhani/Rajdhani-SemiBold.woff") format("woff");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Rajdhani";src:url("Rajdhani/Rajdhani-Bold.woff") format("woff");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Oswald";src:url("Oswald/Oswald.woff") format("woff");font-weight:200 700;font-style:normal;font-display:swap}
+@font-face{font-family:"Saira Condensed";src:url("Saira_Condensed/SairaCondensed-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Saira Condensed";src:url("Saira_Condensed/SairaCondensed-Medium.woff") format("woff");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"Saira Condensed";src:url("Saira_Condensed/SairaCondensed-SemiBold.woff") format("woff");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Saira Condensed";src:url("Saira_Condensed/SairaCondensed-Bold.woff") format("woff");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Quantico";src:url("Quantico/Quantico-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Quantico";src:url("Quantico/Quantico-Bold.woff") format("woff");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Oxanium";src:url("Oxanium/Oxanium.woff") format("woff");font-weight:200 800;font-style:normal;font-display:swap}
+@font-face{font-family:"Chakra Petch";src:url("Chakra_Petch/ChakraPetch-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Chakra Petch";src:url("Chakra_Petch/ChakraPetch-Medium.woff") format("woff");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"Chakra Petch";src:url("Chakra_Petch/ChakraPetch-SemiBold.woff") format("woff");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Chakra Petch";src:url("Chakra_Petch/ChakraPetch-Bold.woff") format("woff");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Exo 2";src:url("Exo_2/Exo2.woff") format("woff");font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:"IM Fell English SC";src:url("IM_Fell_English_SC/IMFeENsc28P.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Rye";src:url("Rye/Rye-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Bungee";src:url("Bungee/Bungee-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Bungee Shade";src:url("Bungee_Shade/BungeeShade-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Black Ops One";src:url("Black_Ops_One/BlackOpsOne-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Wallpoet";src:url("Wallpoet/Wallpoet-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Audiowide";src:url("Audiowide/Audiowide-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Michroma";src:url("Michroma/Michroma-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Electrolize";src:url("Electrolize/Electrolize-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Iceland";src:url("Iceland/Iceland-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"VT323";src:url("VT323/VT323-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Major Mono Display";src:url("Major_Mono_Display/MajorMonoDisplay-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Jacquard 24";src:url("Jacquard_24/Jacquard24-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}

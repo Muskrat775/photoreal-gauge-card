@@ -1,0 +1,25 @@
+schema: 1
+kind: pack
+id: core
+name: Core
+version: 1.0.0
+author: Photoreal Gauge Card
+description: The templates that ship with Photoreal Gauge Card. All pictures and themes live in packs.
+license: MIT
+requires:
+  card: '>=1.7.0'
+assets:
+  Square_backgrounds: []
+  Dial_faces: []
+  Outer_rings: []
+  Needles: []
+  Hubs: []
+  Label_and_display_backgrounds: []
+themes: []
+templates:
+- core_battery-percent
+- core_temperature
+- core_power-watts
+- core_tank-level
+- core_humidity
+gauges: []

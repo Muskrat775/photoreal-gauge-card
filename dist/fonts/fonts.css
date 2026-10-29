@@ -1,4 +1,3 @@
-/* Photoreal Gauge Card fonts. All are open-license (SIL OFL 1.1) fonts from Google Fonts, trimmed to Latin characters.
    Load them all with one line in the card YAML:  font_urls: [ /hacsfiles/photoreal-gauge-card/fonts/fonts.css ]
    Browsers only download the fonts a gauge actually uses. */
 @font-face{font-family:"Orbitron";src:url("Orbitron/Orbitron.woff") format("woff");font-weight:400 900;font-style:normal;font-display:swap}

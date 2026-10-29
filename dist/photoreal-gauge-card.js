@@ -1,11 +1,11 @@
 /*!
- * photoreal-gauge-card  v1.7.0
+ * photoreal-gauge-card  v1.7.1
  * Photo-realistic analog gauge card for Home Assistant (Lovelace)
  *
  * Coordinates for labels / LEDs / digital displays: X and Y are PERCENT of the
  * square card (0-100). 50,50 is the gauge centre. Sizes are % of card width.
  */
-const PGC_VERSION = "1.7.0";
+const PGC_VERSION = "1.7.1";
 /* The font pack shipped next to this file (/hacsfiles/photoreal-gauge-card/fonts/fonts.css with HACS). It is the default for font_urls. */
 const PGC_FONTS_CSS = new URL("fonts/fonts.css", import.meta.url).href;
 
@@ -77,7 +77,8 @@ const PGC_DEFAULTS = {
   // hub
   hub_size: 7, hub_color: "#c9ccd1", hub_image: "", hub_opacity: 1,
   // extras
-  labels: [], leds: [], font_urls: [PGC_FONTS_CSS], custom_fonts: [],
+  labels: [], leds: [], font_urls: [PGC_FONTS_CSS], custom_fonts: [], scale: 100,
+  scale_type: "linear",
 };
 
 /* Defaults for each entry in `digitals`. */
@@ -338,6 +339,8 @@ class PhotorealGaugeCard extends HTMLElement {
     ["font_urls", "custom_fonts"].forEach((k) => { c[k] = Array.isArray(c[k]) ? c[k] : (c[k] && typeof c[k] !== "number") ? [c[k]] : []; });
     PGC_ACTION_KEYS.forEach((k) => (c[k] = normAction(c[k], PGC_DEFAULTS[k])));
     if (!(+c.max > +c.min)) throw new Error("photoreal-gauge-card: 'max' must be greater than 'min'");
+    c.scale_type = c.scale_type === "log" && +c.min > 0 ? "log" : "linear";   // log needs min above 0
+    c.scale = Math.min(100, Math.max(10, +c.scale || 100));          // the card can shrink but never grow past its container
     this._c = c;
     this._ents = [c.entity, c.min_marker_entity, c.max_marker_entity,
       ...c.labels.map(pgcEnt),
@@ -444,10 +447,19 @@ class PhotorealGaugeCard extends HTMLElement {
     for (const t of this._thr) if (v >= t.from && (v < t.to || (v <= this._g.max && t.to >= this._g.max))) return t.color;
     return null;
   }
+  /* value <-> fraction of the scale (0..1), linear or logarithmic */
+  _frac(v) {
+    const { min, max } = this._g, x = Math.min(max, Math.max(min, v));
+    if (this._c.scale_type === "log") return Math.log(x / min) / Math.log(max / min || 1);
+    return (x - min) / (max - min || 1);
+  }
+  _valAt(f) {
+    const { min, max } = this._g;
+    return this._c.scale_type === "log" ? min * Math.pow(max / min, f) : min + f * (max - min);
+  }
   _ang(v) {
-    const { sA, eA, min, max } = this._g;
-    const f = (Math.min(max, Math.max(min, v)) - min) / (max - min || 1);
-    return sA + f * (eA - sA);
+    const { sA, eA } = this._g;
+    return sA + this._frac(v) * (eA - sA);
   }
 
   /* ------------------------------------------------------------- build */
@@ -485,7 +497,7 @@ class PhotorealGaugeCard extends HTMLElement {
       dMaj += `M${f2(x1)} ${f2(y1)}L${f2(x2)} ${f2(y2)}`;
       if (C.show_numbers) {
         const [tx, ty] = pt(numR, a);
-        nums += `<text x="${f2(tx)}" y="${f2(ty)}">${(g.min + (i * (g.max - g.min)) / (M - 1)).toFixed(+C.number_decimals)}</text>`;
+        nums += `<text x="${f2(tx)}" y="${f2(ty)}">${this._valAt(i / (M - 1)).toFixed(+C.number_decimals)}</text>`;
       }
       if (i < M - 1) for (let j = 1; j <= N; j++) {
         const b = a + (j * step) / (N + 1);
@@ -605,6 +617,7 @@ class PhotorealGaugeCard extends HTMLElement {
     const $ = (s) => root.querySelector(s), S = (el, o) => Object.assign(el.style, o);
     const sq = (this._sq = $(".sq"));
     S(sq, { borderRadius: C.square_radius + "%" });
+    if (C.scale < 100) S(sq, { width: C.scale + "%", margin: "0 auto" });
     const interactive = PGC_ACTION_KEYS.some((k) => C[k].action !== "none");
     sq.setAttribute("role", interactive ? "button" : "img");
     if (interactive) {
@@ -872,7 +885,7 @@ const PGC_THEME_ITEM_KEYS = {
   digitals: ["font", "bold", "italic", "underline", "color", "bg_color", "bg_image"],
 };
 const PGC_INSTANCE_KEYS = ["type", "entity", "name", "attribute", "min_marker_entity", "max_marker_entity", "tap_action", "hold_action", "double_tap_action",
-  "font_urls", "custom_fonts", "pgc_theme", "pgc_template", "pgc_inputs", "pgc_theme_colors", "grid_options", "layout_options", "view_layout", "visibility", "card_mod"];
+  "font_urls", "custom_fonts", "scale", "pgc_theme", "pgc_template", "pgc_inputs", "pgc_theme_colors", "grid_options", "layout_options", "view_layout", "visibility", "card_mod"];
 const PGC_TEMPLATE_KEYS = [...new Set([...Object.keys(PGC_DEFAULTS), "digitals", ...PGC_DIGITAL_LEGACY_KEYS])]
   .filter((k) => !PGC_THEME_KEYS.includes(k) && !PGC_INSTANCE_KEYS.includes(k));
 
@@ -1390,7 +1403,9 @@ const PGC_SCHEMA = [
   { name: "entity", required: true, selector: { entity: {} } },
   txt("name"), txt("attribute"), txt("unit"),
   grid(num("min", -100000, 100000, 1), num("max", -100000, 100000, 1), num("decimals", 0, 6)),
+  sel("scale_type", [{ value: "linear", label: "Linear" }, { value: "log", label: "Logarithmic" }]),
   grid(num("start_angle", -360, 360), num("end_angle", -360, 360)),
+  num("scale", 10, 100, 1, true, "%"),
   grp("Actions", [act("tap_action"), act("hold_action"), act("double_tap_action")]),
   grp("Backgrounds (square & circle)", [
     num("gauge_margin", 0, 20, 0.5), num("square_radius", 0, 50, 0.5),
@@ -1514,6 +1529,8 @@ const PGC_STRIP_EMPTY = ["thresholds", "labels", "circle_conditions"];         /
 
 /* ---- field labels: PGC_LABELS applies everywhere, PGC_LABELS_CTX overrides per group ---- */
 const PGC_LABELS = {
+  scale_type: "Scale type",
+  scale: "Card size (scale)",
   x: "X position", y: "Y position",
   bg_color: "Background color", bg_opacity: "Background opacity", bg_image: "Background image URL",
   min_marker_value: "Min marker (fixed value)", max_marker_value: "Max marker (fixed value)",
@@ -1542,6 +1559,8 @@ const PGC_LABELS_CTX = {
 /* ---- the text behind every info icon (also used to build README.md) ---- */
 const PGC_HELP = {
   main: {
+    scale_type: "Linear spaces the numbers evenly. Logarithmic gives each factor of 10 equal room, so a value that swings from 1 to 1000 stays readable. Logarithmic needs Min above 0; otherwise the scale stays linear.",
+    scale: "Overall size of the gauge as a percentage of the space the card is given. 100 fills the space; smaller values shrink it and centre it. It cannot grow past 100.",
     entity: "The Home Assistant entity this gauge shows. Its state, or the attribute chosen below, must be a number.",
     name: "A display name you can insert into text labels with {name}. If empty, the entity's friendly name is used.",
     attribute: "Read this attribute of the entity instead of its state, for example battery_level. Leave empty to use the state.",

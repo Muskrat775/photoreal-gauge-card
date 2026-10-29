@@ -1,6 +1,6 @@
 # Photoreal Gauge Card
 
-Version 1.7.0
+Version 1.7.1
 
 ![A photo-realistic gauge on a carbon graphite panel](https://raw.githubusercontent.com/Muskrat775/photoreal-gauge-card/main/dist/images/hero.png)
 
@@ -16,6 +16,7 @@ Photoreal Gauge Card is a custom Lovelace card for Home Assistant that draws a r
 - [All options](#all-options)
 - [Text label tokens](#text-label-tokens)
 - [LED conditions](#led-conditions)
+- [Card size (scale) and logarithmic scale](#card-size-scale-and-logarithmic-scale)
 - [Use gauge entity](#use-gauge-entity)
 - [Examples with pictures](#examples-with-pictures)
 - [Themes, templates, gauges and packs](#themes-templates-gauges-and-packs)
@@ -187,8 +188,10 @@ The tables below list every option, its YAML key and its default. The same expla
 | Min | `min` | The value at the start of the dial, where the needle sits at its lowest position. | `0` |
 | Max | `max` | The value at the end of the dial. Must be larger than Min. | `100` |
 | Decimals | `decimals` | Number of digits after the decimal point in digital displays and in the {value} label token. | `0` |
+| Scale type | `scale_type` | Linear spaces the numbers evenly. Logarithmic gives each factor of 10 equal room, so a value that swings from 1 to 1000 stays readable. Logarithmic needs Min above 0; otherwise the scale stays linear. | `linear` |
 | Start angle | `start_angle` | Where the scale begins, in degrees. 0 is straight up and negative values go left. The default -135 starts at the lower left. | `-135` |
 | End angle | `end_angle` | Where the scale ends, in degrees. 0 is straight up and positive values go right. The default 135 ends at the lower right. | `135` |
+| Card size (scale) | `scale` | Overall size of the gauge as a percentage of the space the card is given. 100 fills the space; smaller values shrink it and centre it. It cannot grow past 100. | `100` |
 
 ### Actions
 
@@ -501,6 +504,24 @@ leds:
 
 LEDs written with the older keys (`above`, `below`, `equals`, `invert`, `effect`, `blink_rate`, ...) still work. When you edit such an LED in the visual editor, it is shown as one condition named *Lit* and saved in the new form.
 
+## Card size (scale) and logarithmic scale
+
+**Card size (scale)** shrinks the gauge inside its card. The slider and the text box both go from 10 to 100 percent. The value is capped at 100, so the gauge never grows past the space the card has. At less than 100 the gauge is centered.
+
+```yaml
+scale: 70
+```
+
+### Logarithmic scale
+
+**Scale type** (`scale_type: log`) gives each factor of 10 equal room on the dial, and the numbers are spaced the same way, so a value that swings from 1 to 1000 stays readable. It needs **Min** above 0; otherwise the scale stays linear.
+
+```yaml
+min: 1
+max: 1000
+scale_type: log
+```
+
 ## Use gauge entity
 
 Digital displays, text labels and LED conditions each have a **Use gauge entity** check box, **on by default**. While it is checked the item uses the gauge's own entity and no entity needs to be chosen. Un-check it to pick a different entity for that item. The **Attribute** field works either way. Items from older configs that already name an entity open with the box un-checked.
@@ -614,7 +635,7 @@ Ready-made looks come in **packs**. Open the **Photoreal theme** picker at the t
 | Pack | What is in it |
 |---|---|
 | **Core** | The five templates (battery, temperature, power, tank, humidity) and a sample needle. No themes: it is the behavior half; install a look pack to use them |
-| **Stone Glyph** | The carved ancient-stone set plus the iris diaphragm and energy pool dials: 3 themes |
+| **Stone Glyph** | The carved ancient-stone set plus the iris diaphragm and energy pool dials and five extra ring pictures (louvered steel and four glyph rings in amber and gold): 3 themes |
 | **Metal** | Chrome, steel, aluminum, brass, gold, copper and knurled steel: 8 themes |
 | **Carbon** | Carbon fiber, black plastic and red racing accents: 4 themes |
 | **Glass & Sci-Fi** | Smoked and blue glass, radar green, sci-fi bulkhead and amber alert: 4 themes (plus a lava dial picture) |
@@ -734,6 +755,7 @@ The image or color changes at once (there is no fade). A condition that sets onl
 
 | Version | Changes |
 |---|---|
+| 1.7.1 | **Card size (`scale`)**: a slider and text box, 10 to 100 percent, that shrinks the gauge and centers it (capped at 100), and a **logarithmic scale** option (`scale_type: log`). |
 | 1.7.0 | **Photoreal themes, templates, gauges and packs** (Core, Stone Glyph, Metal, Carbon, Glass & Sci-Fi, Vintage, Marine, Aviation, Neon Arcade, Woodsy, Solar and Off-grid; the classic numbered pictures moved into packs), image **Browse** buttons, and **bold, italic and underline** for the scale numbers, labels and digital displays. |
 | 1.6.2 | New original **ancient stone** ring (seven amber gems, rune cells) with matching renamed stone images and an `Ancient_stone` theme, replacing the earlier stone-ring images and theme. The affected files are `07-ancient-*` in the picture pack. Update any YAML that used the old `07-stargate-*` names. **Circle background conditions**: a default circle image/color plus an ordered list of conditions that swap them (`circle_conditions`). New dial faces `11-iris-diaphragm` (overlapping steel blades) and `12-energy-pool` (glowing blue ripples). |
 | 1.6.1 | The bundled fonts (`fonts/fonts.css`) are now loaded by default, so the 24 shipped fonts are available without any configuration. A custom **Font urls** list replaces the default. Custom fonts accepts a plain font file address; the family name is the file name. |
